@@ -17,6 +17,9 @@ export function Services() {
   const [serviceTypeFilter, setServiceTypeFilter] = useState<'all' | 1 | 2>('all')
   const [dcxFilter, setDcxFilter] = useState<'all' | 'dcx-enabled' | 'standalone'>('all')
   const [performanceFilter, setPerformanceFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<'score' | 'name' | 'reviews' | 'owner'>('score')
+  const [groupBy, setGroupBy] = useState<'none' | 'owner' | 'performance'>('none')
 
   const serviceData = useMemo(() => {
     if (isLoading || services.length === 0) return []
@@ -66,10 +69,33 @@ export function Services() {
       if (dcxFilter === 'dcx-enabled' && !service.isDcxEnabled) return false
       if (dcxFilter === 'standalone' && service.isDcxEnabled) return false
       if (performanceFilter !== 'all' && service.performanceCategory !== performanceFilter) return false
+      
+      // Search functionality
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase()
+        return (
+          service.name.toLowerCase().includes(query) ||
+          service.owner.toLowerCase().includes(query) ||
+          service.id.toLowerCase().includes(query)
+        )
+      }
+      
       return true
     })
-    .sort((a, b) => b.overallScore - a.overallScore)
-  }, [services, serviceReviews, dcxReviews, serviceChannels, channels, isLoading, serviceTypeFilter, dcxFilter, performanceFilter])
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name)
+        case 'reviews':
+          return b.reviewCount - a.reviewCount
+        case 'owner':
+          return a.owner.localeCompare(b.owner)
+        case 'score':
+        default:
+          return b.overallScore - a.overallScore
+      }
+    })
+  }, [services, serviceReviews, dcxReviews, serviceChannels, channels, isLoading, serviceTypeFilter, dcxFilter, performanceFilter, searchQuery, sortBy])
 
   // Service performance vs volume scatter plot
   const performanceVolumeChart = useMemo(() => {
@@ -295,6 +321,30 @@ export function Services() {
     if (!selectedServiceId) return null
     return serviceData.find(s => s.id === selectedServiceId)
   }, [selectedServiceId, serviceData])
+
+  // Group services for better organization
+  const groupedServices = useMemo(() => {
+    if (groupBy === 'none') {
+      return { 'All Services': serviceData }
+    } else if (groupBy === 'owner') {
+      return serviceData.reduce((groups, service) => {
+        const key = service.owner
+        if (!groups[key]) groups[key] = []
+        groups[key].push(service)
+        return groups
+      }, {} as Record<string, typeof serviceData>)
+    } else if (groupBy === 'performance') {
+      return serviceData.reduce((groups, service) => {
+        const key = service.performanceCategory === 'high' ? '🟢 High Performance (85+)' :
+                   service.performanceCategory === 'medium' ? '🟡 Medium Performance (70-84)' :
+                   '🔴 Needs Attention (<70)'
+        if (!groups[key]) groups[key] = []
+        groups[key].push(service)
+        return groups
+      }, {} as Record<string, typeof serviceData>)
+    }
+    return { 'All Services': serviceData }
+  }, [serviceData, groupBy])
 
   // Service channels analysis for selected service
   const serviceChannelsChart = useMemo(() => {
@@ -583,73 +633,215 @@ export function Services() {
 
       {/* Service Portfolio & Details */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Service Portfolio */}
+        {/* Enhanced Service Portfolio */}
         <Card>
           <CardHeader>
-            <CardTitle>Service Portfolio</CardTitle>
+            <CardTitle>🔍 Service Portfolio Discovery</CardTitle>
             <CardDescription>
-              Select services to inspect detailed performance and channel distribution
+              Enhanced service finder with search, filtering, and smart organization
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 max-h-[500px] overflow-y-auto">
-              {serviceData.map((service) => (
-                <div 
-                  key={service.id} 
-                  className={`p-3 border rounded-lg cursor-pointer transition-colors hover:bg-accent/50 ${
-                    selectedServiceId === service.id ? 'bg-accent border-primary' : ''
-                  }`}
-                  onClick={() => setSelectedServiceId(service.id)}
+            {/* Search and Controls */}
+            <div className="space-y-4 mb-4">
+              {/* Search Bar */}
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <span className="text-gray-500 text-sm">🔍</span>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search services by name, owner, or ID..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    <span className="text-gray-400 hover:text-gray-600">✕</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Quick Filters */}
+              <div className="flex flex-wrap gap-2">
+                <Button 
+                  variant={sortBy === 'score' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSortBy('score')}
                 >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-sm">{service.name}</p>
-                        <Badge variant="outline" className="text-xs">
-                          {service.type === 1 ? '🔄' : '⚙️'} Type-{service.type}
-                        </Badge>
-                        {service.isDcxEnabled && (
-                          <Badge variant="secondary" className="text-xs">
-                            🔗 DCX
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground mb-1">
-                        {service.owner} • {service.reviewCount} reviews • {service.channelCount} channels
-                      </p>
-                      <div className="flex gap-1">
-                        {service.channelBreakdown.app > 0 && (
-                          <Badge variant="outline" className="text-xs">📱 {service.channelBreakdown.app}</Badge>
-                        )}
-                        {service.channelBreakdown.web > 0 && (
-                          <Badge variant="outline" className="text-xs">🌐 {service.channelBreakdown.web}</Badge>
-                        )}
-                        {service.channelBreakdown.shared > 0 && (
-                          <Badge variant="outline" className="text-xs">🔗 {service.channelBreakdown.shared}</Badge>
-                        )}
-                        {service.channelBreakdown.service_center > 0 && (
-                          <Badge variant="outline" className="text-xs">🏢 {service.channelBreakdown.service_center}</Badge>
-                        )}
-                      </div>
+                  🎯 By Score
+                </Button>
+                <Button 
+                  variant={sortBy === 'name' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSortBy('name')}
+                >
+                  🔤 By Name
+                </Button>
+                <Button 
+                  variant={sortBy === 'reviews' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSortBy('reviews')}
+                >
+                  📊 By Volume
+                </Button>
+                <Button 
+                  variant={sortBy === 'owner' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSortBy('owner')}
+                >
+                  🏢 By Owner
+                </Button>
+              </div>
+
+              {/* Grouping Options */}
+              <div className="flex flex-wrap gap-2">
+                <Button 
+                  variant={groupBy === 'none' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setGroupBy('none')}
+                >
+                  📝 Flat List
+                </Button>
+                <Button 
+                  variant={groupBy === 'owner' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setGroupBy('owner')}
+                >
+                  🏢 By Owner
+                </Button>
+                <Button 
+                  variant={groupBy === 'performance' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setGroupBy('performance')}
+                >
+                  ⚡ By Performance
+                </Button>
+              </div>
+
+              {/* Results Summary */}
+              <div className="flex justify-between items-center text-sm text-muted-foreground border-t pt-2">
+                <span>
+                  {searchQuery && `"${searchQuery}" - `}
+                  {serviceData.length} service{serviceData.length !== 1 ? 's' : ''} found
+                </span>
+                {searchQuery && (
+                  <span className="text-blue-600 font-medium">
+                    🔍 Active Search
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Grouped Service List */}
+            <div className="max-h-[600px] overflow-y-auto space-y-4">
+              {Object.entries(groupedServices).map(([groupName, services]) => (
+                <div key={groupName}>
+                  {groupBy !== 'none' && (
+                    <div className="sticky top-0 bg-background/90 backdrop-blur-sm border-b pb-2 mb-3">
+                      <h4 className="font-semibold text-sm text-muted-foreground">
+                        {groupName} ({services.length})
+                      </h4>
                     </div>
-                    <div className="text-right">
-                      <p className={`font-bold text-sm ${
-                        service.overallScore >= 85 ? 'text-green-600' : 
-                        service.overallScore >= 70 ? 'text-yellow-600' : 'text-red-600'
-                      }`}>
-                        {service.overallScore}
-                      </p>
-                      {service.isDcxEnabled && service.dcxInfluence !== 0 && (
-                        <p className={`text-xs ${
-                          service.dcxInfluence > 0 ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          DCX: {service.dcxInfluence > 0 ? '+' : ''}{service.dcxInfluence.toFixed(1)}
-                        </p>
-                      )}
-                    </div>
+                  )}
+                  <div className="space-y-2">
+                    {services.map((service) => (
+                      <div 
+                        key={service.id} 
+                        className={`p-3 border rounded-lg cursor-pointer transition-all hover:shadow-md hover:bg-accent/30 ${
+                          selectedServiceId === service.id ? 'bg-accent border-primary shadow-sm' : ''
+                        }`}
+                        onClick={() => setSelectedServiceId(service.id)}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className={`w-2 h-2 rounded-full ${
+                                service.overallScore >= 85 ? 'bg-green-500' : 
+                                service.overallScore >= 70 ? 'bg-yellow-500' : 'bg-red-500'
+                              }`}></div>
+                              <p className="font-medium text-sm">{service.name}</p>
+                              <Badge variant="outline" className="text-xs">
+                                {service.type === 1 ? '🔄' : '⚙️'} Type-{service.type}
+                              </Badge>
+                              {service.isDcxEnabled && (
+                                <Badge variant="secondary" className="text-xs">
+                                  🔗 DCX
+                                </Badge>
+                              )}
+                              {service.performanceCategory === 'high' && (
+                                <Badge variant="default" className="text-xs bg-green-100 text-green-700">
+                                  ⭐ Top Performer
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mb-2">
+                              🏢 {service.owner} • 📊 {service.reviewCount} reviews • 🌐 {service.channelCount} channels
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {service.channelBreakdown.app > 0 && (
+                                <Badge variant="outline" className="text-xs">📱 {service.channelBreakdown.app}</Badge>
+                              )}
+                              {service.channelBreakdown.web > 0 && (
+                                <Badge variant="outline" className="text-xs">🌐 {service.channelBreakdown.web}</Badge>
+                              )}
+                              {service.channelBreakdown.shared > 0 && (
+                                <Badge variant="outline" className="text-xs">🔗 {service.channelBreakdown.shared}</Badge>
+                              )}
+                              {service.channelBreakdown.service_center > 0 && (
+                                <Badge variant="outline" className="text-xs">🏢 {service.channelBreakdown.service_center}</Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right ml-4">
+                            <div className={`font-bold text-lg ${
+                              service.overallScore >= 85 ? 'text-green-600' : 
+                              service.overallScore >= 70 ? 'text-yellow-600' : 'text-red-600'
+                            }`}>
+                              {service.overallScore}
+                            </div>
+                            {service.isDcxEnabled && service.dcxInfluence !== 0 && (
+                              <div className={`text-xs ${
+                                service.dcxInfluence > 0 ? 'text-green-600' : 'text-red-600'
+                              }`}>
+                                DCX: {service.dcxInfluence > 0 ? '+' : ''}{service.dcxInfluence.toFixed(1)}
+                              </div>
+                            )}
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {service.performanceCategory} perf.
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
+
+              {/* No Results Message */}
+              {serviceData.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <div className="text-4xl mb-2">🔍</div>
+                  <p className="text-lg font-medium">No services found</p>
+                  <p className="text-sm">
+                    {searchQuery ? `No services match "${searchQuery}"` : 'Try adjusting your filters'}
+                  </p>
+                  {searchQuery && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setSearchQuery('')}
+                      className="mt-3"
+                    >
+                      Clear Search
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
