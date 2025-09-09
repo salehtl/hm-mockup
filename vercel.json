@@ -1,0 +1,13 @@
+{
+  "buildCommand": "cd hm-dashboard && npm run build",
+  "outputDirectory": "hm-dashboard/dist",
+  "installCommand": "cd hm-dashboard && npm ci",
+  "devCommand": "cd hm-dashboard && npm run dev",
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
