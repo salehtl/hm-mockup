@@ -1,0 +1,8 @@
+# Happiness Meter Scoring Dashboard
+# This is a proof-of-concept dashboard for internal use
+
+User-agent: *
+Disallow: /
+
+# Sitemap location (when applicable)
+# Sitemap: https://hm-dashboard.local/sitemap.xml
