@@ -21,4 +21,6 @@ export const apiEndpoints = {
   serviceChannels: `${API_BASE_URL}/serviceChannels`,
   entities: `${API_BASE_URL}/entities`,
   dcx: `${API_BASE_URL}/dcx`,
+  serviceComments: `${API_BASE_URL}/serviceComments`,
+  channelComments: `${API_BASE_URL}/channelComments`,
 }

@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { BarChart3, Settings, Home, GitBranch } from 'lucide-react'
+import { BarChart3, Settings, Home, GitBranch, MessageSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navigation = [
@@ -22,6 +22,11 @@ const navigation = [
     name: 'DCX Journeys',
     href: '/dcx',
     icon: GitBranch,
+  },
+  {
+    name: 'Comments',
+    href: '/comments',
+    icon: MessageSquare,
   },
 ]
 

@@ -5,6 +5,7 @@ import { Overview } from './pages/Overview'
 import { Services } from './pages/Services'
 import { Channels } from './pages/Channels'
 import { DCX } from './pages/DCX'
+import Comments from './pages/Comments'
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
             <Route path="services" element={<Services />} />
             <Route path="channels" element={<Channels />} />
             <Route path="dcx" element={<DCX />} />
+            <Route path="comments" element={<Comments />} />
           </Route>
         </Routes>
       </EntityProvider>

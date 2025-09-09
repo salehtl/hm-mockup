@@ -18,6 +18,8 @@ app.get('/api/dcxReviews', (req, res) => res.json(data.dcxReviews || []));
 app.get('/api/booths', (req, res) => res.json(data.booths || []));
 app.get('/api/serviceChannels', (req, res) => res.json(data.serviceChannels || []));
 app.get('/api/dcx', (req, res) => res.json(data.dcx || []));
+app.get('/api/serviceComments', (req, res) => res.json(data.serviceComments || []));
+app.get('/api/channelComments', (req, res) => res.json(data.channelComments || []));
 
 app.listen(PORT, () => {
   console.log(`API server running at http://localhost:${PORT}`);
@@ -31,4 +33,6 @@ app.listen(PORT, () => {
   console.log('- GET /api/booths');
   console.log('- GET /api/serviceChannels');
   console.log('- GET /api/dcx');
+  console.log('- GET /api/serviceComments');
+  console.log('- GET /api/channelComments');
 });

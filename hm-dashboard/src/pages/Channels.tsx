@@ -6,6 +6,7 @@ import { useMemo, useState } from 'react'
 import ReactECharts from 'echarts-for-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { AssetTrendChart } from '@/components/AssetTrendChart'
 
 export function Channels() {
   const { selectedEntity } = useEntity()
@@ -658,6 +659,9 @@ export function Channels() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Asset Performance Trends */}
+      <AssetTrendChart />
 
       {/* Channel Assets & Services */}
       <div className="grid gap-6 md:grid-cols-2">
