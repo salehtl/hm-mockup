@@ -14,6 +14,9 @@ export function Channels() {
   const [channelTypeFilter, setChannelTypeFilter] = useState<'all' | 'app' | 'web' | 'service_center'>('all')
   const [showServicesForChannel, setShowServicesForChannel] = useState<string | null>(null)
   const [performanceFilter, setPerformanceFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<'score' | 'name' | 'reviews' | 'type'>('score')
+  const [groupBy, setGroupBy] = useState<'none' | 'type' | 'performance'>('none')
 
   const channelData = useMemo(() => {
     if (isLoading || channels.length === 0) return null
@@ -74,7 +77,7 @@ export function Channels() {
       }
     })
 
-    // Filter channels by type and performance
+    // Filter channels by type, performance, and search
     const filteredChannels = channelsWithScores.filter(channel => {
       if (channelTypeFilter !== 'all' && channel.type !== channelTypeFilter) return false
       // Only apply performance filter to rated channels
@@ -82,7 +85,31 @@ export function Channels() {
         if (channel.performanceCategory === 'unrated') return false
         if (channel.performanceCategory !== performanceFilter) return false
       }
+      
+      // Search functionality
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase()
+        return (
+          channel.name.toLowerCase().includes(query) ||
+          channel.type.toLowerCase().includes(query) ||
+          channel.id.toLowerCase().includes(query)
+        )
+      }
+      
       return true
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name)
+        case 'reviews':
+          return b.totalRatings - a.totalRatings
+        case 'type':
+          return a.type.localeCompare(b.type)
+        case 'score':
+        default:
+          return b.score - a.score
+      }
     })
 
     return {
@@ -93,7 +120,7 @@ export function Channels() {
       webChannels: channelsWithScores.filter(c => c.type === 'web'),
       serviceCenters: channelsWithScores.filter(c => c.type === 'service_center')
     }
-  }, [channels, channelRatings, booths, isLoading, channelTypeFilter, performanceFilter])
+  }, [channels, channelRatings, booths, isLoading, channelTypeFilter, performanceFilter, searchQuery, sortBy])
 
   // Get services available on a specific channel
   const getServicesForChannel = useMemo(() => {
@@ -302,6 +329,35 @@ export function Channels() {
     if (!selectedChannelId || !channelData) return null
     return channelData.channels.find(c => c.id === selectedChannelId)
   }, [selectedChannelId, channelData])
+
+  // Group channels for better organization
+  const groupedChannels = useMemo(() => {
+    if (!channelData) return {}
+    
+    if (groupBy === 'none') {
+      return { 'All Channels': channelData.filteredChannels }
+    } else if (groupBy === 'type') {
+      return channelData.filteredChannels.reduce((groups, channel) => {
+        const key = channel.type === 'app' ? '📱 Mobile Apps' :
+                   channel.type === 'web' ? '🌐 Web Portals' :
+                   '🏢 Service Centers'
+        if (!groups[key]) groups[key] = []
+        groups[key].push(channel)
+        return groups
+      }, {} as Record<string, typeof channelData.filteredChannels>)
+    } else if (groupBy === 'performance') {
+      return channelData.filteredChannels.reduce((groups, channel) => {
+        const key = channel.performanceCategory === 'high' ? '🟢 High Performance (85+)' :
+                   channel.performanceCategory === 'medium' ? '🟡 Medium Performance (70-84)' :
+                   channel.performanceCategory === 'low' ? '🔴 Needs Attention (<70)' :
+                   '⚪ Unrated Channels'
+        if (!groups[key]) groups[key] = []
+        groups[key].push(channel)
+        return groups
+      }, {} as Record<string, typeof channelData.filteredChannels>)
+    }
+    return { 'All Channels': channelData.filteredChannels }
+  }, [channelData, groupBy])
 
   const boothBreakdownChart = useMemo(() => {
     if (!selectedChannelData || selectedChannelData.type !== 'service_center') return null
@@ -605,67 +661,209 @@ export function Channels() {
 
       {/* Channel Assets & Services */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Channel Assets */}
+        {/* Enhanced Channel Assets */}
         <Card>
           <CardHeader>
-            <CardTitle>Channel Assets</CardTitle>
+            <CardTitle>🔍 Channel Assets Discovery</CardTitle>
             <CardDescription>
-              Select channels to inspect services and detailed performance
+              Enhanced channel finder with search, filtering, and smart organization
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 max-h-[400px] overflow-y-auto">
-              {channelData.filteredChannels.map((channel) => (
-                <div 
-                  key={channel.id} 
-                  className={`p-3 border rounded-lg cursor-pointer transition-colors hover:bg-accent/50 ${
-                    selectedChannelId === channel.id ? 'bg-accent border-primary' : ''
-                  }`}
-                  onClick={() => setSelectedChannelId(channel.id)}
+            {/* Search and Controls */}
+            <div className="space-y-4 mb-4">
+              {/* Search Bar */}
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <span className="text-gray-500 text-sm">🔍</span>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search channels by name, type, or ID..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    <span className="text-gray-400 hover:text-gray-600">✕</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Quick Filters */}
+              <div className="flex flex-wrap gap-2">
+                <Button 
+                  variant={sortBy === 'score' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSortBy('score')}
                 >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-sm">{channel.name}</p>
-                        <Badge variant="outline" className="text-xs">
-                          {channel.type === 'app' ? '📱' : channel.type === 'web' ? '🌐' : '🏢'} 
-                          {channel.type.replace('_', ' ')}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {channel.totalRatings} reviews
-                        {channel.type === 'service_center' && 'boothCount' in channel && ` • ${channel.boothCount} booths`}
-                      </p>
-                      <div className="flex gap-1 mt-1">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="p-0 h-auto text-xs"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setShowServicesForChannel(showServicesForChannel === channel.id ? null : channel.id)
-                          }}
-                        >
-                          {showServicesForChannel === channel.id ? '🔼 Hide' : '🔽 Services'}
-                        </Button>
-                      </div>
+                  🎯 By Score
+                </Button>
+                <Button 
+                  variant={sortBy === 'name' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSortBy('name')}
+                >
+                  🔤 By Name
+                </Button>
+                <Button 
+                  variant={sortBy === 'reviews' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSortBy('reviews')}
+                >
+                  📊 By Volume
+                </Button>
+                <Button 
+                  variant={sortBy === 'type' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSortBy('type')}
+                >
+                  📱 By Type
+                </Button>
+              </div>
+
+              {/* Grouping Options */}
+              <div className="flex flex-wrap gap-2">
+                <Button 
+                  variant={groupBy === 'none' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setGroupBy('none')}
+                >
+                  📝 Flat List
+                </Button>
+                <Button 
+                  variant={groupBy === 'type' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setGroupBy('type')}
+                >
+                  📱 By Type
+                </Button>
+                <Button 
+                  variant={groupBy === 'performance' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setGroupBy('performance')}
+                >
+                  ⚡ By Performance
+                </Button>
+              </div>
+
+              {/* Results Summary */}
+              <div className="flex justify-between items-center text-sm text-muted-foreground border-t pt-2">
+                <span>
+                  {searchQuery && `"${searchQuery}" - `}
+                  {channelData?.filteredChannels.length || 0} channel{(channelData?.filteredChannels.length || 0) !== 1 ? 's' : ''} found
+                </span>
+                {searchQuery && (
+                  <span className="text-blue-600 font-medium">
+                    🔍 Active Search
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Grouped Channel List */}
+            <div className="max-h-[500px] overflow-y-auto space-y-4">
+              {Object.entries(groupedChannels).map(([groupName, channels]) => (
+                <div key={groupName}>
+                  {groupBy !== 'none' && (
+                    <div className="sticky top-0 bg-background/90 backdrop-blur-sm border-b pb-2 mb-3">
+                      <h4 className="font-semibold text-sm text-muted-foreground">
+                        {groupName} ({channels.length})
+                      </h4>
                     </div>
-                    <div className="text-right">
-                      <p className={`font-bold text-sm ${
-                        channel.score >= 85 ? 'text-green-600' : 
-                        channel.score >= 70 ? 'text-yellow-600' : 'text-red-600'
-                      }`}>
-                        {channel.score}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {channel.type === 'app' && '50% weight'}
-                        {channel.type === 'web' && '20% weight'}
-                        {channel.type === 'service_center' && '30% weight'}
-                      </p>
-                    </div>
+                  )}
+                  <div className="space-y-2">
+                    {channels.map((channel) => (
+                      <div 
+                        key={channel.id} 
+                        className={`p-3 border rounded-lg cursor-pointer transition-all hover:shadow-md hover:bg-accent/30 ${
+                          selectedChannelId === channel.id ? 'bg-accent border-primary shadow-sm' : ''
+                        }`}
+                        onClick={() => setSelectedChannelId(channel.id)}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className={`w-2 h-2 rounded-full ${
+                                channel.performanceCategory === 'high' ? 'bg-green-500' : 
+                                channel.performanceCategory === 'medium' ? 'bg-yellow-500' : 
+                                channel.performanceCategory === 'low' ? 'bg-red-500' : 'bg-gray-400'
+                              }`}></div>
+                              <p className="font-medium text-sm">{channel.name}</p>
+                              <Badge variant="outline" className="text-xs">
+                                {channel.type === 'app' ? '📱 App' : 
+                                 channel.type === 'web' ? '🌐 Web' : '🏢 Center'}
+                              </Badge>
+                              {channel.performanceCategory === 'high' && (
+                                <Badge variant="default" className="text-xs bg-green-100 text-green-700">
+                                  ⭐ Top Performer
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mb-2">
+                              📊 {channel.totalRatings} reviews
+                              {channel.type === 'service_center' && 'boothCount' in channel && ` • 🏪 ${channel.boothCount} booths`}
+                              {channel.type === 'app' && ' • 🎯 50% weight'}
+                              {channel.type === 'web' && ' • 🎯 20% weight'}
+                              {channel.type === 'service_center' && ' • 🎯 30% weight'}
+                            </p>
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="p-0 h-auto text-xs hover:bg-transparent"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setShowServicesForChannel(showServicesForChannel === channel.id ? null : channel.id)
+                                }}
+                              >
+                                {showServicesForChannel === channel.id ? '🔼 Hide Services' : '🔽 View Services'}
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="text-right ml-4">
+                            <div className={`font-bold text-lg ${
+                              channel.score >= 85 ? 'text-green-600' : 
+                              channel.score >= 70 ? 'text-yellow-600' : 
+                              channel.score > 0 ? 'text-red-600' : 'text-gray-500'
+                            }`}>
+                              {channel.score > 0 ? channel.score : 'N/A'}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {channel.performanceCategory !== 'unrated' ? `${channel.performanceCategory} perf.` : 'unrated'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
+
+              {/* No Results Message */}
+              {(!channelData?.filteredChannels || channelData.filteredChannels.length === 0) && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <div className="text-4xl mb-2">🔍</div>
+                  <p className="text-lg font-medium">No channels found</p>
+                  <p className="text-sm">
+                    {searchQuery ? `No channels match "${searchQuery}"` : 'Try adjusting your filters'}
+                  </p>
+                  {searchQuery && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setSearchQuery('')}
+                      className="mt-3"
+                    >
+                      Clear Search
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
