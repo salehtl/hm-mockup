@@ -3,8 +3,8 @@ const getApiBaseUrl = () => {
   if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
     return '/api'
   }
-  // In development, check if we have json-server running, otherwise use Vercel dev API
-  return process.env.NODE_ENV === 'development' && process.env.VITE_USE_JSON_SERVER === 'true'
+  // In development, check if we have json-server running, otherwise use local API
+  return import.meta.env?.VITE_USE_JSON_SERVER === 'true'
     ? 'http://localhost:3001'
     : '/api'
 }
