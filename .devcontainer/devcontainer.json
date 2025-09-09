@@ -1,0 +1,28 @@
+{
+  "name": "project-template",
+  "image": "mcr.microsoft.com/devcontainers/base:debian",
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/node:1": { "version": "20" }
+  },
+  "onCreateCommand": "bash -lc 'git config --global user.name \"saleh\" && git config --global user.email \"salehtl@icloud.com\" && npm i -g @anthropic-ai/claude-code --silent || true'",
+  "postCreateCommand": "make setup || true && echo 'alias claude=\"claude --dangerously-skip-permissions\"' >> /home/vscode/.bashrc",
+  "forwardPorts": [3000],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "anthropic.claude-code"
+      ]
+    }
+  },
+  "mounts": [
+    "source=/run/host-services/ssh-auth.sock,target=/ssh-agent,type=bind",
+    "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached",
+    "source=claude-config,target=/home/vscode/.config/claude,type=volume"
+  ],
+  "remoteEnv": {
+    "SSH_AUTH_SOCK": "/ssh-agent",
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}"
+  }
+}
