@@ -1,5 +1,4 @@
-import fs from 'fs';
-import path from 'path';
+import { data } from './data.js';
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -13,9 +12,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    const dbPath = path.join(process.cwd(), 'api', 'db.json');
-    const data = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-    
     if (req.method === 'GET') {
       res.status(200).json(data.channels || []);
     } else {
