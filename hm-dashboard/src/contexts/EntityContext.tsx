@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
+import { apiEndpoints } from '@/lib/api'
 
 interface Entity {
   id: string
@@ -26,7 +27,7 @@ export function EntityProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function fetchEntities() {
       try {
-        const response = await fetch('http://localhost:3001/entities')
+        const response = await fetch(apiEndpoints.entities)
         const data = await response.json()
         setEntities(data)
       } catch (error) {

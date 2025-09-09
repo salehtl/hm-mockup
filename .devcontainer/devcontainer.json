@@ -5,7 +5,7 @@
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/node:1": { "version": "20" }
   },
-  "onCreateCommand": "bash -lc 'git config --global user.name \"saleh\" && git config --global user.email \"salehtl@icloud.com\" && npm i -g @anthropic-ai/claude-code --silent || true'",
+  "onCreateCommand": "bash -lc 'git config --global user.name \"saleh\" && git config --global user.email \"salehtl@icloud.com\" && npm i -g @anthropic-ai/claude-code vercel --silent || true'",
   "postCreateCommand": "make setup || true && echo 'alias claude=\"claude --dangerously-skip-permissions\"' >> /home/vscode/.bashrc",
   "forwardPorts": [3000],
   "customizations": {

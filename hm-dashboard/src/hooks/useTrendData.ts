@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useEntity } from '@/contexts/EntityContext'
 import { calculateEntityScore, calculateEntityServiceScore, calculateChannelTypeScore } from '@/lib/calculations'
+import { apiEndpoints } from '@/lib/api'
 
 interface TrendDataPoint {
   date: string
@@ -29,12 +30,12 @@ export function useTrendData() {
           dcxReviewsRes,
           boothsRes,
         ] = await Promise.all([
-          fetch('http://localhost:3001/services'),
-          fetch('http://localhost:3001/channels'),
-          fetch('http://localhost:3001/serviceReviews'),
-          fetch('http://localhost:3001/channelRatings'),
-          fetch('http://localhost:3001/dcxReviews'),
-          fetch('http://localhost:3001/booths'),
+          fetch(apiEndpoints.services),
+          fetch(apiEndpoints.channels),
+          fetch(apiEndpoints.serviceReviews),
+          fetch(apiEndpoints.channelRatings),
+          fetch(apiEndpoints.dcxReviews),
+          fetch(apiEndpoints.booths),
         ])
 
         const [

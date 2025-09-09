@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react'
 import ReactECharts from 'echarts-for-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { apiEndpoints } from '@/lib/api'
 
 interface DCXJourney {
   id: string
@@ -31,9 +32,9 @@ export function DCX() {
     async function fetchDcxData() {
       try {
         const [dcxResponse, servicesResponse, entitiesResponse] = await Promise.all([
-          fetch('http://localhost:3001/dcx'),
-          fetch('http://localhost:3001/services'),
-          fetch('http://localhost:3001/entities')
+          fetch(apiEndpoints.dcx),
+          fetch(apiEndpoints.services),
+          fetch(apiEndpoints.entities)
         ])
         const [dcxData, allServicesData, entitiesData] = await Promise.all([
           dcxResponse.json(),

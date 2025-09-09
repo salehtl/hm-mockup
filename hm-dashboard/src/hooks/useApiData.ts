@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useEntity } from '@/contexts/EntityContext'
+import { apiEndpoints } from '@/lib/api'
 
 interface Service {
   id: string
@@ -80,13 +81,13 @@ export function useApiData() {
           boothsRes,
           serviceChannelsRes,
         ] = await Promise.all([
-          fetch('http://localhost:3001/services'),
-          fetch('http://localhost:3001/channels'),
-          fetch('http://localhost:3001/serviceReviews'),
-          fetch('http://localhost:3001/channelRatings'),
-          fetch('http://localhost:3001/dcxReviews'),
-          fetch('http://localhost:3001/booths'),
-          fetch('http://localhost:3001/serviceChannels'),
+          fetch(apiEndpoints.services),
+          fetch(apiEndpoints.channels),
+          fetch(apiEndpoints.serviceReviews),
+          fetch(apiEndpoints.channelRatings),
+          fetch(apiEndpoints.dcxReviews),
+          fetch(apiEndpoints.booths),
+          fetch(apiEndpoints.serviceChannels),
         ])
 
         const [

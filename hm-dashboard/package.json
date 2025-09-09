@@ -4,12 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host",
+    "dev": "vercel dev",
+    "dev:json-server": "VITE_USE_JSON_SERVER=true concurrently \"json-server --watch data/db.json --port 3001\" \"vite --host\"",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "api": "json-server --watch data/db.json --port 3001",
-    "start": "concurrently \"npm run api\" \"npm run dev\"",
+    "start": "npm run dev",
     "fmt": "prettier --write ."
   },
   "dependencies": {
