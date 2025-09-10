@@ -1,8 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Input } from '@/components/ui/input'
 import { TrendChart } from './TrendChart'
 import { useAssetTrendData } from '@/hooks/useAssetTrendData'
 import { BarChart3, Check, ChevronsUpDown } from 'lucide-react'
@@ -11,7 +10,28 @@ import { cn } from '@/lib/utils'
 export function AssetTrendChart() {
   const [selectedAssetId, setSelectedAssetId] = useState<string>('')
   const [open, setOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const { trendData, availableAssets, isLoading } = useAssetTrendData(selectedAssetId || null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Filter assets based on search query
+  const filteredAssets = availableAssets.filter(asset => 
+    asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    asset.typeLabel.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    asset.entityName.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   if (isLoading) {
     return (
@@ -49,70 +69,72 @@ export function AssetTrendChart() {
               }
             </CardDescription>
           </div>
-          <div className="w-80">
-            <Popover open={open} onOpenChange={setOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={open}
-                  className="w-full justify-between"
-                >
-                  {selectedAssetId
-                    ? (() => {
-                        const asset = availableAssets.find((asset) => asset.id === selectedAssetId)
-                        return asset ? (
-                          <div className="flex items-center gap-2">
-                            <span>{asset.typeIcon}</span>
-                            <div className="flex flex-col text-left">
-                              <span className="font-medium">{asset.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {asset.typeLabel} • {asset.entityName}
-                              </span>
-                            </div>
-                          </div>
-                        ) : "Select asset..."
-                      })()
-                    : "Search and select asset..."}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 p-0">
-                <Command>
-                  <CommandInput placeholder="Search assets by name, type, or entity..." />
-                  <CommandList>
-                    <CommandEmpty>No assets found.</CommandEmpty>
-                    <CommandGroup>
-                      {availableAssets.map((asset) => (
-                        <CommandItem
-                          key={asset.id}
-                          value={`${asset.name} ${asset.typeLabel} ${asset.entityName}`.toLowerCase()}
-                          onSelect={() => {
-                            setSelectedAssetId(asset.id)
-                            setOpen(false)
-                          }}
-                          className="flex items-center gap-2 w-full cursor-pointer"
-                        >
-                          <span>{asset.typeIcon}</span>
-                          <div className="flex flex-col text-left flex-1">
-                            <span className="font-medium">{asset.name}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {asset.typeLabel} • {asset.entityName}
-                            </span>
-                          </div>
-                          <Check
-                            className={cn(
-                              "ml-auto h-4 w-4",
-                              selectedAssetId === asset.id ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+          <div className="w-80 relative" ref={dropdownRef}>
+            <Button
+              variant="outline"
+              onClick={() => setOpen(!open)}
+              className="w-full justify-between"
+            >
+              {selectedAssetId
+                ? (() => {
+                    const asset = availableAssets.find((a) => a.id === selectedAssetId)
+                    return asset ? (
+                      <span className="flex items-center gap-2 text-left">
+                        <span>{asset.typeIcon}</span>
+                        <span className="font-medium truncate">{asset.name}</span>
+                      </span>
+                    ) : "Select asset..."
+                  })()
+                : "Search and select asset..."}
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+            
+            {open && (
+              <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border rounded-md shadow-lg">
+                <div className="p-2 border-b">
+                  <Input
+                    type="text"
+                    placeholder="Search assets by name, type, or entity..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+                <div className="max-h-[300px] overflow-y-auto">
+                  {filteredAssets.length === 0 ? (
+                    <div className="p-4 text-center text-muted-foreground">
+                      No assets found.
+                    </div>
+                  ) : (
+                    filteredAssets.map((asset) => (
+                      <div
+                        key={asset.id}
+                        onClick={() => {
+                          setSelectedAssetId(asset.id)
+                          setOpen(false)
+                          setSearchQuery('')
+                        }}
+                        className="flex items-center gap-2 p-2 hover:bg-accent cursor-pointer"
+                      >
+                        <span>{asset.typeIcon}</span>
+                        <div className="flex flex-col text-left flex-1 min-w-0">
+                          <span className="font-medium truncate">{asset.name}</span>
+                          <span className="text-xs text-muted-foreground truncate">
+                            {asset.typeLabel} • {asset.entityName}
+                          </span>
+                        </div>
+                        <Check
+                          className={cn(
+                            "ml-2 h-4 w-4 shrink-0",
+                            selectedAssetId === asset.id ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </CardHeader>
