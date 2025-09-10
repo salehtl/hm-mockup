@@ -7,6 +7,7 @@ import ReactECharts from 'echarts-for-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import { AssetTrendChart } from '@/components/AssetTrendChart'
 import { SkeletonPage } from '@/components/SkeletonLoader'
 import { usePageSlicers } from '@/contexts/PageSlicersContext'
@@ -542,303 +543,305 @@ export function Channels() {
       </div>
 
       {/* Channel Assets & Services */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Enhanced Channel Assets */}
+      <div className="grid gap-6 md:grid-cols-1">
+        {/* Channel Assets & Analysis */}
         <Card>
           <CardHeader>
-            <CardTitle>🔍 Channel Assets Discovery</CardTitle>
+            <CardTitle>🔍 Channel Assets & Analysis</CardTitle>
             <CardDescription>
-              Enhanced channel finder with search, filtering, and smart organization
+              Comprehensive channel discovery with detailed analysis - select any channel for deep dive insights
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Search and Controls */}
-            <div className="space-y-4 mb-4">
-              {/* Search Bar */}
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500 text-sm">🔍</span>
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search channels by name, type, or ID..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  >
-                    <span className="text-gray-400 hover:text-gray-600">✕</span>
-                  </button>
-                )}
-              </div>
-
-              {/* Quick Filters */}
-              <div className="flex flex-wrap gap-2">
-                <Button 
-                  variant={sortBy === 'score' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSortBy('score')}
-                >
-                  🎯 By Score
-                </Button>
-                <Button 
-                  variant={sortBy === 'name' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSortBy('name')}
-                >
-                  🔤 By Name
-                </Button>
-                <Button 
-                  variant={sortBy === 'reviews' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSortBy('reviews')}
-                >
-                  📊 By Volume
-                </Button>
-                <Button 
-                  variant={sortBy === 'type' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSortBy('type')}
-                >
-                  📱 By Type
-                </Button>
-              </div>
-
-              {/* Filter Chips */}
-              <div className="flex flex-wrap gap-2">
-                <Button 
-                  variant={channelTypeFilter === 'all' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setChannelTypeFilter('all')}
-                >
-                  All Channels ({channelData?.channels.length || 0})
-                </Button>
-                <Button 
-                  variant={channelTypeFilter === 'app' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setChannelTypeFilter('app')}
-                >
-                  📱 Apps ({channelData?.appChannels.length || 0})
-                </Button>
-                <Button 
-                  variant={channelTypeFilter === 'web' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setChannelTypeFilter('web')}
-                >
-                  🌐 Web ({channelData?.webChannels.length || 0})
-                </Button>
-                <Button 
-                  variant={channelTypeFilter === 'service_center' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setChannelTypeFilter('service_center')}
-                >
-                  🏢 Centers ({channelData?.serviceCenters.length || 0})
-                </Button>
-              </div>
-
-              {/* Grouping Options */}
-              <div className="flex flex-wrap gap-2">
-                <Button 
-                  variant={groupBy === 'none' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setGroupBy('none')}
-                >
-                  📝 Flat List
-                </Button>
-                <Button 
-                  variant={groupBy === 'type' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setGroupBy('type')}
-                >
-                  📱 By Type
-                </Button>
-                <Button 
-                  variant={groupBy === 'performance' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setGroupBy('performance')}
-                >
-                  ⚡ By Performance
-                </Button>
-              </div>
-
-              {/* Results Summary */}
-              <div className="flex justify-between items-center text-sm text-muted-foreground border-t pt-2">
-                <span>
-                  {searchQuery && `"${searchQuery}" - `}
-                  {channelData?.filteredChannels.length || 0} channel{(channelData?.filteredChannels.length || 0) !== 1 ? 's' : ''} found
-                </span>
-                {searchQuery && (
-                  <span className="text-blue-600 font-medium">
-                    🔍 Active Search
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Grouped Channel List */}
-            <div className="max-h-[500px] overflow-y-auto space-y-4">
-              {Object.entries(groupedChannels).map(([groupName, channels]) => (
-                <div key={groupName}>
-                  {groupBy !== 'none' && (
-                    <h4 className="font-medium text-sm text-muted-foreground mb-2 sticky top-0 bg-background z-10">
-                      {groupName} ({channels.length})
-                    </h4>
-                  )}
-                  <div className="space-y-2">
-                    {channels.map((channel: any) => (
-                      <div 
-                        key={channel.id} 
-                        className={`p-3 border rounded-lg cursor-pointer transition-colors hover:bg-accent/50 ${
-                          selectedChannelId === channel.id ? 'bg-accent border-primary' : ''
-                        }`}
-                        onClick={() => setSelectedChannelId(channel.id)}
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium text-sm">{channel.name}</p>
-                              <Badge variant="outline" className="text-xs">
-                                {channel.type === 'service_center' ? '🏢' : 
-                                 channel.type === 'app' ? '📱' : 
-                                 channel.type === 'web' ? '🌐' : 
-                                 channel.type === 'shared_platform' ? '🔗' : '📋'} {channel.type}
-                              </Badge>
-                              {channel.performanceCategory === 'low' && (
-                                <Badge variant="destructive" className="text-xs">⚠️ Needs Attention</Badge>
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground">{channel.id}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className={`font-bold text-sm ${
-                              channel.score >= 85 ? 'text-green-600' : 
-                              channel.score >= 70 ? 'text-yellow-600' : 'text-red-600'
-                            }`}>
-                              {channel.score || '--'}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {channel.reviews || 0} reviews
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+            {/* Enhanced Filter Controls */}
+            <div className="space-y-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                {/* Search Input */}
+                <div className="md:col-span-2 relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-gray-500 text-sm">🔍</span>
                   </div>
-                </div>
-              ))}
-
-              {/* No Results Message */}
-              {(!channelData?.filteredChannels || channelData.filteredChannels.length === 0) && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <div className="text-4xl mb-2">🔍</div>
-                  <p className="text-lg font-medium">No channels found</p>
-                  <p className="text-sm">
-                    {hasActiveFilters ? 'Try adjusting your filters above' : 'No channels available'}
-                  </p>
-                  {hasActiveFilters && (
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={clearAllFilters}
-                      className="mt-3"
+                  <Input
+                    type="text"
+                    placeholder="Search channels..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
                     >
-                      Clear All Filters
-                    </Button>
+                      <span className="text-gray-400 hover:text-gray-600">✕</span>
+                    </button>
                   )}
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Channel Services Mapper */}
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {selectedChannelData ? '🔍 Channel Deep Dive' : '🗂️ Channel Services'}
-            </CardTitle>
-            <CardDescription>
-              {selectedChannelData ? selectedChannelData.name : 'Select a channel to view service distribution and dependencies'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {selectedChannelData ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-sm font-medium">Channel Score</p>
-                    <p className={`text-2xl font-bold ${
-                      selectedChannelData.score >= 85 ? 'text-green-600' : 
-                      selectedChannelData.score >= 70 ? 'text-yellow-600' : 'text-red-600'
-                    }`}>
-                      {selectedChannelData.score || '--'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Reviews</p>
-                    <p className="text-2xl font-bold">{selectedChannelData.totalRatings || 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Services</p>
-                    <p className="text-2xl font-bold">{selectedChannelServices.length}</p>
-                  </div>
+                {/* Channel Type Select */}
+                <Select value={channelTypeFilter} onValueChange={(value: 'all' | 'app' | 'web' | 'service_center') => setChannelTypeFilter(value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Channel Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Channels ({channelData?.channels.length || 0})</SelectItem>
+                    <SelectItem value="app">📱 Apps ({channelData?.appChannels.length || 0})</SelectItem>
+                    <SelectItem value="web">🌐 Web ({channelData?.webChannels.length || 0})</SelectItem>
+                    <SelectItem value="service_center">🏢 Centers ({channelData?.serviceCenters.length || 0})</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Sort By Select */}
+                <Select value={sortBy} onValueChange={(value: 'score' | 'name' | 'reviews' | 'type') => setSortBy(value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sort By" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="score">🎯 By Score</SelectItem>
+                    <SelectItem value="name">🔤 By Name</SelectItem>
+                    <SelectItem value="reviews">📊 By Volume</SelectItem>
+                    <SelectItem value="type">📱 By Type</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Performance Filter Select */}
+                <Select value={performanceFilter} onValueChange={(value: 'all' | 'high' | 'medium' | 'low') => setPerformanceFilter(value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Performance" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">📊 All Levels</SelectItem>
+                    <SelectItem value="high">🟢 High (85+)</SelectItem>
+                    <SelectItem value="medium">🟡 Medium (70-84)</SelectItem>
+                    <SelectItem value="low">🔴 Low (&lt;70)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Group By and Clear Actions Row */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <Select value={groupBy} onValueChange={(value: 'none' | 'type' | 'performance') => setGroupBy(value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Group By" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">📝 No Grouping</SelectItem>
+                    <SelectItem value="type">📱 By Type</SelectItem>
+                    <SelectItem value="performance">⚡ By Performance</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Clear Filters Button */}
+                {hasActiveFilters && (
+                  <Button variant="outline" onClick={clearAllFilters} className="w-full">
+                    Clear All Filters
+                  </Button>
+                )}
+              </div>
+
+              {/* Quick Actions */}
+              <div className="flex justify-between items-center">
+                <div className="text-sm text-muted-foreground">
+                  Showing {channelData?.filteredChannels.length || 0} of {channelData?.channels.length || 0} channels
                 </div>
+                {hasActiveFilters && (
+                  <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                    <span className="mr-1">✕</span>
+                    Clear All
+                  </Button>
+                )}
+              </div>
+            </div>
 
-                <div className="p-3 bg-accent/20 rounded-lg">
-                  <p className="text-sm font-medium mb-1">Channel Insights</p>
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    <p>🏷️ Type: {selectedChannelData.type}</p>
-                    <p>🎯 Performance Category: {selectedChannelData.performanceCategory}</p>
-                    <p>📊 Review Volume: {selectedChannelData.totalRatings || 0}</p>
-                    {selectedChannelData.type === 'service_center' && (selectedChannelData as any).boothCount && (
-                      <p>🏢 Booths: {(selectedChannelData as any).boothCount}</p>
-                    )}
-                  </div>
+            {/* Two-Column Layout: Channel List + Analysis */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left Column: Channel Assets List */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-lg">Channel Assets</h3>
+                  <Badge variant="secondary" className="text-xs">
+                    {channelData?.filteredChannels.length || 0} channels
+                  </Badge>
                 </div>
                 
-                <div>
-                  <p className="text-sm font-medium mb-2">🔗 Connected Services</p>
-                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                    {selectedChannelServices.map((service: any, index: number) => (
-                      <div key={service?.id} className="flex items-center justify-between p-3 rounded-lg border">
-                        <div className="flex items-center space-x-3">
-                          <span className="rounded-full w-6 h-6 bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold">
-                            {index + 1}
-                          </span>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium">{service?.name || 'Unknown Service'}</p>
-                              {service?.type === 2 && <Badge variant="secondary" className="text-xs">Type-2</Badge>}
+                <div className="max-h-[500px] overflow-y-auto space-y-3 pr-2">
+                  {Object.entries(groupedChannels).map(([groupName, channels]) => (
+                    <div key={groupName}>
+                      {groupBy !== 'none' && (
+                        <h4 className="font-medium text-sm text-muted-foreground mb-2 sticky top-0 bg-background z-10">
+                          {groupName} ({channels.length})
+                        </h4>
+                      )}
+                      <div className="space-y-2">
+                        {channels.map((channel: any) => (
+                          <div 
+                            key={channel.id} 
+                            className={`p-3 border rounded-lg cursor-pointer transition-all duration-200 hover:bg-accent/50 hover:border-primary/50 ${
+                              selectedChannelId === channel.id ? 'bg-accent border-primary shadow-sm' : ''
+                            }`}
+                            onClick={() => setSelectedChannelId(channel.id)}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <p className="font-medium text-sm truncate">{channel.name}</p>
+                                  <Badge variant="outline" className="text-xs flex-shrink-0">
+                                    {channel.type === 'service_center' ? '🏢' : 
+                                     channel.type === 'app' ? '📱' : 
+                                     channel.type === 'web' ? '🌐' : 
+                                     channel.type === 'shared_platform' ? '🔗' : '📋'} 
+                                    {channel.type === 'service_center' ? 'SC' : 
+                                     channel.type === 'app' ? 'App' : 
+                                     channel.type === 'web' ? 'Web' : channel.type}
+                                  </Badge>
+                                  {channel.performanceCategory === 'low' && (
+                                    <Badge variant="destructive" className="text-xs flex-shrink-0">⚠️</Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground truncate">{channel.id}</p>
+                              </div>
+                              <div className="text-right flex-shrink-0 ml-2">
+                                <p className={`font-bold text-lg ${
+                                  channel.score >= 85 ? 'text-green-600' : 
+                                  channel.score >= 70 ? 'text-yellow-600' : 'text-red-600'
+                                }`}>
+                                  {channel.score || '--'}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {channel.reviews || 0} reviews
+                                </p>
+                              </div>
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                              {service?.owner || 'Unknown Owner'}
-                            </p>
                           </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* No Results Message */}
+                  {(!channelData?.filteredChannels || channelData.filteredChannels.length === 0) && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <div className="text-4xl mb-2">🔍</div>
+                      <p>No channels match your current filters</p>
+                      <Button variant="outline" size="sm" className="mt-2" onClick={clearAllFilters}>
+                        Clear Filters
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: Channel Analysis Panel */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-lg">
+                    {selectedChannelData ? '🔍 Channel Analysis' : '📊 Analysis Panel'}
+                  </h3>
+                  {selectedChannelData && (
+                    <Badge variant="outline" className="text-xs">
+                      {selectedChannelData.type === 'service_center' ? 'Service Center' : 
+                       selectedChannelData.type === 'app' ? 'Mobile App' : 
+                       selectedChannelData.type === 'web' ? 'Web Portal' : 
+                       selectedChannelData.type}
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="bg-muted/30 rounded-lg p-4 min-h-[500px]">
+                  {selectedChannelData ? (
+                    <div className="space-y-4">
+                      {/* Channel Header */}
+                      <div className="border-b pb-3">
+                        <h4 className="font-semibold text-lg">{selectedChannelData.name}</h4>
+                        <p className="text-sm text-muted-foreground">{selectedChannelData.id}</p>
+                        <div className="flex gap-2 mt-2">
+                          <Badge variant="outline">
+                            {selectedChannelData.type === 'service_center' ? '🏢 Service Center' : 
+                             selectedChannelData.type === 'app' ? '📱 Mobile App' : 
+                             selectedChannelData.type === 'web' ? '🌐 Web Portal' : 
+                             selectedChannelData.type}
+                          </Badge>
                         </div>
-                        <div className="text-right">
-                          <p className="font-bold text-sm text-muted-foreground">
-                            Connected
+                      </div>
+
+                      {/* Key Metrics */}
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="bg-background p-3 rounded border">
+                          <p className="text-sm font-medium">Channel Score</p>
+                          <p className={`text-2xl font-bold ${
+                            selectedChannelData.score >= 85 ? 'text-green-600' : 
+                            selectedChannelData.score >= 70 ? 'text-yellow-600' : 'text-red-600'
+                          }`}>
+                            {selectedChannelData.score || '--'}
+                          </p>
+                        </div>
+                        <div className="bg-background p-3 rounded border">
+                          <p className="text-sm font-medium">Reviews</p>
+                          <p className="text-2xl font-bold text-blue-600">
+                            {selectedChannelData.totalRatings || 0}
+                          </p>
+                        </div>
+                        <div className="bg-background p-3 rounded border">
+                          <p className="text-sm font-medium">Services</p>
+                          <p className="text-2xl font-bold text-purple-600">
+                            {selectedChannelServices.length}
                           </p>
                         </div>
                       </div>
-                    ))}
-                  </div>
+
+                      {/* Channel Insights */}
+                      <div className="p-3 bg-accent/20 rounded-lg">
+                        <p className="text-sm font-medium mb-2">Channel Insights</p>
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <p>🏷️ Type: {selectedChannelData.type}</p>
+                          <p>🎯 Performance Category: {selectedChannelData.performanceCategory}</p>
+                          <p>📊 Review Volume: {selectedChannelData.totalRatings || 0}</p>
+                          {selectedChannelData.type === 'service_center' && (selectedChannelData as any).boothCount && (
+                            <p>🏢 Booths: {(selectedChannelData as any).boothCount}</p>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Connected Services */}
+                      <div>
+                        <p className="text-sm font-medium mb-2">🔗 Connected Services</p>
+                        <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                          {selectedChannelServices.map((service: any, index: number) => (
+                            <div key={service?.id} className="flex items-center justify-between p-2 rounded-lg border text-xs">
+                              <div className="flex items-center space-x-2">
+                                <span className="rounded-full w-5 h-5 bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold">
+                                  {index + 1}
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium truncate">{service?.name || 'Unknown Service'}</p>
+                                  <p className="text-muted-foreground truncate">
+                                    {service?.owner || 'Unknown Owner'}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex-shrink-0">
+                                {service?.type === 2 && <Badge variant="secondary" className="text-xs">T2</Badge>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-center text-muted-foreground">
+                      <div>
+                        <div className="text-4xl mb-2">📊</div>
+                        <p className="font-medium">Select a Channel</p>
+                        <p className="text-sm">Choose a channel from the list to view detailed analysis</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-            ) : (
-              <div className="h-[400px] flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <div className="text-4xl mb-2">📋</div>
-                  <p>Select a channel to view detailed service mapping and performance insights</p>
-                </div>
-              </div>
-            )}
+            </div>
           </CardContent>
         </Card>
+
       </div>
 
       {/* Main Analytics Section */}
