@@ -91,22 +91,21 @@ export function AssetTrendChart() {
                             setSelectedAssetId(asset.id)
                             setOpen(false)
                           }}
+                          className="flex items-center gap-2 w-full cursor-pointer"
                         >
-                          <div className="flex items-center gap-2 w-full">
-                            <span>{asset.typeIcon}</span>
-                            <div className="flex flex-col text-left flex-1">
-                              <span className="font-medium">{asset.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {asset.typeLabel} • {asset.entityName}
-                              </span>
-                            </div>
-                            <Check
-                              className={cn(
-                                "ml-auto h-4 w-4",
-                                selectedAssetId === asset.id ? "opacity-100" : "opacity-0"
-                              )}
-                            />
+                          <span>{asset.typeIcon}</span>
+                          <div className="flex flex-col text-left flex-1">
+                            <span className="font-medium">{asset.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {asset.typeLabel} • {asset.entityName}
+                            </span>
                           </div>
+                          <Check
+                            className={cn(
+                              "ml-auto h-4 w-4",
+                              selectedAssetId === asset.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
                         </CommandItem>
                       ))}
                     </CommandGroup>

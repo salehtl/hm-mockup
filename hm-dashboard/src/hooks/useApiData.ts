@@ -14,7 +14,7 @@ interface Service {
 interface Channel {
   id: string
   entityId: string
-  type: 'app' | 'web' | 'service_center'
+  type: 'app' | 'web' | 'service_center' | 'shared_platform'
   name: string
 }
 

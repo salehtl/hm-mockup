@@ -15,7 +15,7 @@ interface ChannelRating {
 
 interface Channel {
   id: string
-  type: 'app' | 'web' | 'service_center'
+  type: 'app' | 'web' | 'service_center' | 'shared_platform'
 }
 
 interface Service {
