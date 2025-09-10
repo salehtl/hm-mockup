@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Search, Filter, MessageSquare, ThumbsUp, Flag, CheckCircle, User } from 'lucide-react'
 import { apiEndpoints } from '@/lib/api'
 import ReactECharts from 'echarts-for-react'
+import { SkeletonPage } from '@/components/SkeletonLoader'
 
 interface ServiceComment {
   id: string
@@ -69,7 +70,7 @@ export default function Comments() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
   // Load data
-  useState(() => {
+  useEffect(() => {
     async function loadData() {
       try {
         const [serviceCommentsRes, channelCommentsRes, servicesRes, channelsRes] = await Promise.all([
@@ -78,6 +79,10 @@ export default function Comments() {
           fetch(apiEndpoints.services),
           fetch(apiEndpoints.channels)
         ])
+        
+        if (!serviceCommentsRes.ok || !channelCommentsRes.ok || !servicesRes.ok || !channelsRes.ok) {
+          throw new Error('One or more API requests failed')
+        }
         
         setServiceComments(await serviceCommentsRes.json())
         setChannelComments(await channelCommentsRes.json())
@@ -90,7 +95,7 @@ export default function Comments() {
       }
     }
     loadData()
-  })
+  }, [])
 
   // Combined comments with type distinction
   const allComments = useMemo(() => {
@@ -251,26 +256,11 @@ export default function Comments() {
   }
 
   if (loading) {
-    return (
-      <div className="p-6">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-24 bg-gray-200 rounded"></div>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
+    return <SkeletonPage showKpis={true} showCharts={true} showTable={true} />
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Comments Analysis</h1>
-        <p className="text-gray-600">Explore user feedback and comments across services and channels</p>
-      </div>
+    <div className="space-y-6">
 
       {/* Analytics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

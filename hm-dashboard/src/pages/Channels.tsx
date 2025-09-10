@@ -2,22 +2,37 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useApiData } from '@/hooks/useApiData'
 import { useEntity } from '@/contexts/EntityContext'
 import { calculateChannelTypeScore } from '@/lib/calculations'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import ReactECharts from 'echarts-for-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AssetTrendChart } from '@/components/AssetTrendChart'
+import { SkeletonPage } from '@/components/SkeletonLoader'
+import { usePageSlicers } from '@/contexts/PageSlicersContext'
 
 export function Channels() {
-  const { selectedEntity } = useEntity()
+  const { } = useEntity()
   const { channels, channelRatings, booths, services, serviceChannels, serviceReviews, isLoading } = useApiData()
+  const { setSlicers } = usePageSlicers()
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null)
   const [channelTypeFilter, setChannelTypeFilter] = useState<'all' | 'app' | 'web' | 'service_center'>('all')
-  const [showServicesForChannel, setShowServicesForChannel] = useState<string | null>(null)
+  const [showServicesForChannel] = useState<string | null>(null)
   const [performanceFilter, setPerformanceFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<'score' | 'name' | 'reviews' | 'type'>('score')
   const [groupBy, setGroupBy] = useState<'none' | 'type' | 'performance'>('none')
+
+  // Check for active filters
+  const hasActiveFilters = channelTypeFilter !== 'all' || performanceFilter !== 'all' || searchQuery !== ''
+  
+  const clearAllFilters = () => {
+    setChannelTypeFilter('all')
+    setPerformanceFilter('all')
+    setSearchQuery('')
+    setSortBy('score')
+    setGroupBy('none')
+  }
 
   const channelData = useMemo(() => {
     if (isLoading || channels.length === 0) return null
@@ -151,6 +166,17 @@ export function Channels() {
       }
     }).sort((a, b) => b.avgScore - a.avgScore)
   }, [showServicesForChannel, serviceChannels, services, serviceReviews])
+
+  // Get services for the selected channel specifically for the detail view
+  const selectedChannelServices = useMemo(() => {
+    if (!selectedChannelId || !serviceChannels.length || !services.length) return []
+    
+    const channelServiceIds = serviceChannels
+      .filter(sc => sc.channelId === selectedChannelId && sc.isAvailableVia)
+      .map(sc => sc.serviceId)
+    
+    return services.filter(s => channelServiceIds.includes(s.id))
+  }, [selectedChannelId, serviceChannels, services])
 
   // Channel performance overview with volume metrics
   const channelPerformanceChart = useMemo(() => {
@@ -360,66 +386,6 @@ export function Channels() {
     return { 'All Channels': channelData.filteredChannels }
   }, [channelData, groupBy])
 
-  const boothBreakdownChart = useMemo(() => {
-    if (!selectedChannelData || selectedChannelData.type !== 'service_center') return null
-    
-    const centerBooths = booths.filter(b => b.centerId === selectedChannelData.id)
-    const boothData = centerBooths.map(booth => {
-      const boothRatings = channelRatings.filter(r => r.boothId === booth.id)
-      const score = boothRatings.length > 0 
-        ? boothRatings.reduce((sum, r) => sum + (r.score * r.n), 0) / boothRatings.reduce((sum, r) => sum + r.n, 0)
-        : 0
-      const volume = boothRatings.reduce((sum, r) => sum + r.n, 0)
-      return { name: booth.name, score: Math.round(score * 100) / 100, volume }
-    })
-
-    return {
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: { type: 'shadow' }
-      },
-      legend: {
-        data: ['Score', 'Volume']
-      },
-      xAxis: {
-        type: 'category',
-        data: boothData.map(b => b.name.length > 15 ? b.name.substring(0, 15) + '...' : b.name),
-        axisLabel: {
-          rotate: 45,
-          fontSize: 10
-        }
-      },
-      yAxis: [
-        {
-          type: 'value',
-          name: 'Score',
-          min: 60,
-          max: 100
-        },
-        {
-          type: 'value',
-          name: 'Volume',
-          position: 'right'
-        }
-      ],
-      series: [
-        {
-          name: 'Score',
-          type: 'bar',
-          data: boothData.map(b => b.score),
-          itemStyle: { color: '#8b5cf6' }
-        },
-        {
-          name: 'Volume',
-          type: 'line',
-          yAxisIndex: 1,
-          data: boothData.map(b => b.volume),
-          itemStyle: { color: '#f59e0b' },
-          lineStyle: { width: 2 }
-        }
-      ]
-    }
-  }, [selectedChannelData, booths, channelRatings])
 
   const servicesPerformanceChart = useMemo(() => {
     if (!getServicesForChannel.length) return null
@@ -461,104 +427,65 @@ export function Channels() {
     }
   }, [getServicesForChannel])
 
+  // Set slicers in header when component mounts or data changes
+  useEffect(() => {
+    if (!isLoading && channelData) {
+      const channelSlicers = (
+        <>
+          {/* Channel Type Select */}
+          <Select value={channelTypeFilter} onValueChange={(value: 'all' | 'app' | 'web' | 'service_center') => setChannelTypeFilter(value)}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Channel type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">🌍 All Channels</SelectItem>
+              <SelectItem value="app">📱 Mobile Apps</SelectItem>
+              <SelectItem value="web">🌐 Web Portals</SelectItem>
+              <SelectItem value="service_center">🏢 Service Centers</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Performance Select */}
+          <Select value={performanceFilter} onValueChange={(value: 'all' | 'high' | 'medium' | 'low') => setPerformanceFilter(value)}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Performance" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">📊 All</SelectItem>
+              <SelectItem value="high">🟢 High (85+)</SelectItem>
+              <SelectItem value="medium">🟡 Medium (70-84)</SelectItem>
+              <SelectItem value="low">🔴 Low (&lt;70)</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Clear Filters Button */}
+          {hasActiveFilters && (
+            <Button variant="outline" size="sm" onClick={clearAllFilters} className="text-xs">
+              Clear
+            </Button>
+          )}
+
+          {/* Quick Stats */}
+          <div className="flex items-center space-x-1 text-xs text-muted-foreground bg-accent/20 rounded px-2 py-1">
+            <span className="font-medium">{channelData?.filteredChannels.length || 0}</span>
+            <span>/</span>
+            <span className="font-medium">{channelData?.channels.length || 0}</span>
+          </div>
+        </>
+      )
+      setSlicers(channelSlicers)
+    }
+    return () => setSlicers(null) // Clear slicers when component unmounts
+  }, [isLoading, channelData, channelTypeFilter, performanceFilter, hasActiveFilters, setSlicers])
+
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Channels</h1>
-          <p className="text-muted-foreground">Loading channel data...</p>
-        </div>
-      </div>
-    )
+    return <SkeletonPage showKpis={true} showCharts={true} showList={true} />
   }
 
   if (!channelData) return null
 
-  const entityName = selectedEntity?.name || 'All Entities'
-  
-  // Calculate performance distribution for rated channels only
-  const ratedChannels = channelData.channels.filter(c => c.performanceCategory !== 'unrated')
-  const performanceDistribution = {
-    high: ratedChannels.filter(c => c.performanceCategory === 'high').length,
-    medium: ratedChannels.filter(c => c.performanceCategory === 'medium').length,
-    low: ratedChannels.filter(c => c.performanceCategory === 'low').length
-  }
-
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Channel Analytics</h1>
-        <p className="text-muted-foreground">
-          Comprehensive channel performance analysis for {entityName} - Deep insights into every touchpoint.
-        </p>
-      </div>
-
-      {/* Channel Filters - Moved to top for better UX */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-wrap gap-2">
-            <Button 
-              variant={channelTypeFilter === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setChannelTypeFilter('all')}
-            >
-              All Channels ({channelData.channels.length})
-            </Button>
-            <Button 
-              variant={channelTypeFilter === 'app' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setChannelTypeFilter('app')}
-            >
-              📱 Apps ({channelData.appChannels.length})
-            </Button>
-            <Button 
-              variant={channelTypeFilter === 'web' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setChannelTypeFilter('web')}
-            >
-              🌐 Web ({channelData.webChannels.length})
-            </Button>
-            <Button 
-              variant={channelTypeFilter === 'service_center' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setChannelTypeFilter('service_center')}
-            >
-              🏢 Centers ({channelData.serviceCenters.length})
-            </Button>
-          </div>
-          <div className="flex flex-wrap gap-2 pt-2">
-            <Button 
-              variant={performanceFilter === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setPerformanceFilter('all')}
-            >
-              All Performance
-            </Button>
-            <Button 
-              variant={performanceFilter === 'high' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setPerformanceFilter('high')}
-            >
-              🟢 High (85+) ({performanceDistribution.high})
-            </Button>
-            <Button 
-              variant={performanceFilter === 'medium' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setPerformanceFilter('medium')}
-            >
-              🟡 Medium (70-84) ({performanceDistribution.medium})
-            </Button>
-            <Button 
-              variant={performanceFilter === 'low' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setPerformanceFilter('low')}
-            >
-              🔴 Low (&lt;70) ({performanceDistribution.low})
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* KPI Overview */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
@@ -613,55 +540,6 @@ export function Channels() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Main Analytics Section */}
-      <div className="grid gap-6 md:grid-cols-3">
-        {/* Channel Performance Overview */}
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Channel Performance & Volume Analysis</CardTitle>
-            <CardDescription>
-              Performance scores vs review volume - Bubble size indicates traffic
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[350px]">
-              <ReactECharts option={channelPerformanceChart} style={{ height: '100%', width: '100%' }} />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Channel Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Channel Mix</CardTitle>
-            <CardDescription>Distribution by channel type</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[350px]">
-              <ReactECharts option={channelDistributionChart} style={{ height: '100%', width: '100%' }} />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Performance vs Volume Correlation */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Performance vs Volume Correlation</CardTitle>
-          <CardDescription>
-            Scatter plot showing relationship between review volume and performance scores
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[300px]">
-            <ReactECharts option={performanceVolumeChart} style={{ height: '100%', width: '100%' }} />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Asset Performance Trends */}
-      <AssetTrendChart />
 
       {/* Channel Assets & Services */}
       <div className="grid gap-6 md:grid-cols-2">
@@ -730,6 +608,38 @@ export function Channels() {
                 </Button>
               </div>
 
+              {/* Filter Chips */}
+              <div className="flex flex-wrap gap-2">
+                <Button 
+                  variant={channelTypeFilter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setChannelTypeFilter('all')}
+                >
+                  All Channels ({channelData?.channels.length || 0})
+                </Button>
+                <Button 
+                  variant={channelTypeFilter === 'app' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setChannelTypeFilter('app')}
+                >
+                  📱 Apps ({channelData?.appChannels.length || 0})
+                </Button>
+                <Button 
+                  variant={channelTypeFilter === 'web' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setChannelTypeFilter('web')}
+                >
+                  🌐 Web ({channelData?.webChannels.length || 0})
+                </Button>
+                <Button 
+                  variant={channelTypeFilter === 'service_center' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setChannelTypeFilter('service_center')}
+                >
+                  🏢 Centers ({channelData?.serviceCenters.length || 0})
+                </Button>
+              </div>
+
               {/* Grouping Options */}
               <div className="flex flex-wrap gap-2">
                 <Button 
@@ -774,72 +684,45 @@ export function Channels() {
               {Object.entries(groupedChannels).map(([groupName, channels]) => (
                 <div key={groupName}>
                   {groupBy !== 'none' && (
-                    <div className="sticky top-0 bg-background/90 backdrop-blur-sm border-b pb-2 mb-3">
-                      <h4 className="font-semibold text-sm text-muted-foreground">
-                        {groupName} ({channels.length})
-                      </h4>
-                    </div>
+                    <h4 className="font-medium text-sm text-muted-foreground mb-2 sticky top-0 bg-background z-10">
+                      {groupName} ({channels.length})
+                    </h4>
                   )}
                   <div className="space-y-2">
-                    {channels.map((channel) => (
+                    {channels.map((channel: any) => (
                       <div 
                         key={channel.id} 
-                        className={`p-3 border rounded-lg cursor-pointer transition-all hover:shadow-md hover:bg-accent/30 ${
-                          selectedChannelId === channel.id ? 'bg-accent border-primary shadow-sm' : ''
+                        className={`p-3 border rounded-lg cursor-pointer transition-colors hover:bg-accent/50 ${
+                          selectedChannelId === channel.id ? 'bg-accent border-primary' : ''
                         }`}
                         onClick={() => setSelectedChannelId(channel.id)}
                       >
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <div className={`w-2 h-2 rounded-full ${
-                                channel.performanceCategory === 'high' ? 'bg-green-500' : 
-                                channel.performanceCategory === 'medium' ? 'bg-yellow-500' : 
-                                channel.performanceCategory === 'low' ? 'bg-red-500' : 'bg-gray-400'
-                              }`}></div>
+                            <div className="flex items-center gap-2">
                               <p className="font-medium text-sm">{channel.name}</p>
                               <Badge variant="outline" className="text-xs">
-                                {channel.type === 'app' ? '📱 App' : 
-                                 channel.type === 'web' ? '🌐 Web' : '🏢 Center'}
+                                {channel.type === 'service_center' ? '🏢' : 
+                                 channel.type === 'app' ? '📱' : 
+                                 channel.type === 'web' ? '🌐' : 
+                                 channel.type === 'shared_platform' ? '🔗' : '📋'} {channel.type}
                               </Badge>
-                              {channel.performanceCategory === 'high' && (
-                                <Badge variant="default" className="text-xs bg-green-100 text-green-700">
-                                  ⭐ Top Performer
-                                </Badge>
+                              {channel.performanceCategory === 'low' && (
+                                <Badge variant="destructive" className="text-xs">⚠️ Needs Attention</Badge>
                               )}
                             </div>
-                            <p className="text-xs text-muted-foreground mb-2">
-                              📊 {channel.totalRatings} reviews
-                              {channel.type === 'service_center' && 'boothCount' in channel && ` • 🏪 ${channel.boothCount} booths`}
-                              {channel.type === 'app' && ' • 🎯 50% weight'}
-                              {channel.type === 'web' && ' • 🎯 20% weight'}
-                              {channel.type === 'service_center' && ' • 🎯 30% weight'}
-                            </p>
-                            <div className="flex gap-2">
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="p-0 h-auto text-xs hover:bg-transparent"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setShowServicesForChannel(showServicesForChannel === channel.id ? null : channel.id)
-                                }}
-                              >
-                                {showServicesForChannel === channel.id ? '🔼 Hide Services' : '🔽 View Services'}
-                              </Button>
-                            </div>
+                            <p className="text-xs text-muted-foreground">{channel.id}</p>
                           </div>
-                          <div className="text-right ml-4">
-                            <div className={`font-bold text-lg ${
+                          <div className="text-right">
+                            <p className={`font-bold text-sm ${
                               channel.score >= 85 ? 'text-green-600' : 
-                              channel.score >= 70 ? 'text-yellow-600' : 
-                              channel.score > 0 ? 'text-red-600' : 'text-gray-500'
+                              channel.score >= 70 ? 'text-yellow-600' : 'text-red-600'
                             }`}>
-                              {channel.score > 0 ? channel.score : 'N/A'}
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {channel.performanceCategory !== 'unrated' ? `${channel.performanceCategory} perf.` : 'unrated'}
-                            </div>
+                              {channel.score || '--'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {channel.reviews || 0} reviews
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -854,16 +737,16 @@ export function Channels() {
                   <div className="text-4xl mb-2">🔍</div>
                   <p className="text-lg font-medium">No channels found</p>
                   <p className="text-sm">
-                    {searchQuery ? `No channels match "${searchQuery}"` : 'Try adjusting your filters'}
+                    {hasActiveFilters ? 'Try adjusting your filters above' : 'No channels available'}
                   </p>
-                  {searchQuery && (
+                  {hasActiveFilters && (
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      onClick={() => setSearchQuery('')}
+                      onClick={clearAllFilters}
                       className="mt-3"
                     >
-                      Clear Search
+                      Clear All Filters
                     </Button>
                   )}
                 </div>
@@ -872,65 +755,140 @@ export function Channels() {
           </CardContent>
         </Card>
 
-        {/* Channel Details */}
+        {/* Channel Services Mapper */}
         <Card>
           <CardHeader>
             <CardTitle>
-              {selectedChannelData ? '📋 Channel Insights' : '🎯 Channel Details'}
+              {selectedChannelData ? '🔍 Channel Deep Dive' : '🗂️ Channel Services'}
             </CardTitle>
             <CardDescription>
-              {selectedChannelData ? selectedChannelData.name : 'Select a channel to view detailed insights'}
+              {selectedChannelData ? selectedChannelData.name : 'Select a channel to view service distribution and dependencies'}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {selectedChannelData ? (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <p className="text-sm font-medium">Performance Score</p>
+                    <p className="text-sm font-medium">Channel Score</p>
                     <p className={`text-2xl font-bold ${
                       selectedChannelData.score >= 85 ? 'text-green-600' : 
                       selectedChannelData.score >= 70 ? 'text-yellow-600' : 'text-red-600'
                     }`}>
-                      {selectedChannelData.score}
+                      {selectedChannelData.score || '--'}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium">Review Volume</p>
-                    <p className="text-2xl font-bold">{selectedChannelData.totalRatings}</p>
+                    <p className="text-sm font-medium">Reviews</p>
+                    <p className="text-2xl font-bold">{selectedChannelData.totalRatings || 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Services</p>
+                    <p className="text-2xl font-bold">{selectedChannelServices.length}</p>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-accent/20 rounded-lg">
+                  <p className="text-sm font-medium mb-1">Channel Insights</p>
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p>🏷️ Type: {selectedChannelData.type}</p>
+                    <p>🎯 Performance Category: {selectedChannelData.performanceCategory}</p>
+                    <p>📊 Review Volume: {selectedChannelData.totalRatings || 0}</p>
+                    {selectedChannelData.type === 'service_center' && (selectedChannelData as any).boothCount && (
+                      <p>🏢 Booths: {(selectedChannelData as any).boothCount}</p>
+                    )}
                   </div>
                 </div>
                 
-                <div className="p-3 bg-accent/20 rounded-lg">
-                  <p className="text-sm font-medium mb-1">Channel Impact</p>
-                  <p className="text-xs text-muted-foreground">
-                    {selectedChannelData.type.replace('_', ' ').toUpperCase()}
-                    {selectedChannelData.type === 'app' && ' - 50% weight in overall entity score'}
-                    {selectedChannelData.type === 'web' && ' - 20% weight in overall entity score'}
-                    {selectedChannelData.type === 'service_center' && ' - 30% weight in overall entity score'}
-                  </p>
-                </div>
-
-                {selectedChannelData.type === 'service_center' && boothBreakdownChart && (
-                  <div>
-                    <p className="text-sm font-medium mb-2">🏪 Booth Performance Analysis</p>
-                    <div className="h-[200px]">
-                      <ReactECharts option={boothBreakdownChart} style={{ height: '100%', width: '100%' }} />
-                    </div>
+                <div>
+                  <p className="text-sm font-medium mb-2">🔗 Connected Services</p>
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                    {selectedChannelServices.map((service: any, index: number) => (
+                      <div key={service?.id} className="flex items-center justify-between p-3 rounded-lg border">
+                        <div className="flex items-center space-x-3">
+                          <span className="rounded-full w-6 h-6 bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold">
+                            {index + 1}
+                          </span>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium">{service?.name || 'Unknown Service'}</p>
+                              {service?.type === 2 && <Badge variant="secondary" className="text-xs">Type-2</Badge>}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {service?.owner || 'Unknown Owner'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-sm text-muted-foreground">
+                            Connected
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                )}
+                </div>
               </div>
             ) : (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              <div className="h-[400px] flex items-center justify-center text-muted-foreground">
                 <div className="text-center">
-                  <div className="text-4xl mb-2">📊</div>
-                  <p>Select a channel asset to view detailed performance metrics</p>
+                  <div className="text-4xl mb-2">📋</div>
+                  <p>Select a channel to view detailed service mapping and performance insights</p>
                 </div>
               </div>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Main Analytics Section */}
+      <div className="grid gap-6 md:grid-cols-3">
+        {/* Channel Performance Overview */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Channel Performance & Volume Analysis</CardTitle>
+            <CardDescription>
+              Performance scores vs review volume - Bubble size indicates traffic
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[350px]">
+              <ReactECharts option={channelPerformanceChart} style={{ height: '100%', width: '100%' }} />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Channel Distribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Channel Mix</CardTitle>
+            <CardDescription>Distribution by channel type</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[350px]">
+              <ReactECharts option={channelDistributionChart} style={{ height: '100%', width: '100%' }} />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Performance vs Volume Correlation */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Performance vs Volume Correlation</CardTitle>
+          <CardDescription>
+            Scatter plot showing relationship between review volume and performance scores
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px]">
+            <ReactECharts option={performanceVolumeChart} style={{ height: '100%', width: '100%' }} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Asset Performance Trends */}
+      <AssetTrendChart />
 
       {/* Services on Selected Channel */}
       {showServicesForChannel && (

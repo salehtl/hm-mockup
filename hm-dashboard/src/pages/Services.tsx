@@ -5,14 +5,18 @@ import {
   calculateServiceStandaloneScore, 
   calculateServiceOverallScore 
 } from '@/lib/calculations'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import ReactECharts from 'echarts-for-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SkeletonPage } from '@/components/SkeletonLoader'
+import { usePageSlicers } from '@/contexts/PageSlicersContext'
 
 export function Services() {
-  const { selectedEntity } = useEntity()
+  const { } = useEntity()
   const { services, serviceReviews, dcxReviews, serviceChannels, channels, isLoading } = useApiData()
+  const { setSlicers } = usePageSlicers()
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null)
   const [serviceTypeFilter, setServiceTypeFilter] = useState<'all' | 1 | 2>('all')
   const [dcxFilter, setDcxFilter] = useState<'all' | 'dcx-enabled' | 'standalone'>('all')
@@ -20,6 +24,18 @@ export function Services() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<'score' | 'name' | 'reviews' | 'owner'>('score')
   const [groupBy, setGroupBy] = useState<'none' | 'owner' | 'performance'>('none')
+
+  // Check for active filters
+  const hasActiveFilters = serviceTypeFilter !== 'all' || dcxFilter !== 'all' || performanceFilter !== 'all' || searchQuery !== ''
+  
+  const clearAllFilters = () => {
+    setServiceTypeFilter('all')
+    setDcxFilter('all')
+    setPerformanceFilter('all')
+    setSearchQuery('')
+    setSortBy('score')
+    setGroupBy('none')
+  }
 
   const serviceData = useMemo(() => {
     if (isLoading || services.length === 0) return []
@@ -346,175 +362,80 @@ export function Services() {
     return { 'All Services': serviceData }
   }, [serviceData, groupBy])
 
-  // Service channels analysis for selected service
-  const serviceChannelsChart = useMemo(() => {
-    if (!selectedServiceData) return null
-    
-    const channelData = selectedServiceData.availableChannels.map(channel => ({
-      name: channel?.name || 'Unknown',
-      type: channel?.type || 'unknown',
-      reviews: selectedServiceData.channelBreakdown[
-        channel?.type === 'app' ? 'app' :
-        channel?.type === 'web' ? 'web' :
-        channel?.type === 'service_center' ? 'service_center' : 'shared'
-      ] || 0
-    }))
-    
-    return {
-      tooltip: {
-        trigger: 'item',
-        formatter: '{a} <br/>{b}: {c} reviews'
-      },
-      series: [
-        {
-          name: 'Channel Usage',
-          type: 'pie',
-          radius: '60%',
-          data: channelData.map(c => ({
-            value: c.reviews,
-            name: c.name,
-            itemStyle: {
-              color: c.type === 'app' ? '#60a5fa' :
-                    c.type === 'web' ? '#34d399' :
-                    c.type === 'service_center' ? '#fbbf24' : '#8b5cf6'
-            }
-          })),
-          label: {
-            formatter: '{b}\n{c} reviews'
-          }
-        }
-      ]
+  // Set slicers in header when component mounts or data changes
+  useEffect(() => {
+    if (!isLoading && serviceData) {
+      const serviceSlicers = (
+        <>
+          {/* Service Type Select */}
+          <Select value={serviceTypeFilter.toString()} onValueChange={(value: string) => setServiceTypeFilter(value === 'all' ? 'all' : parseInt(value) as 1 | 2)}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">🌍 All</SelectItem>
+              <SelectItem value="1">🔄 Type-1</SelectItem>
+              <SelectItem value="2">⚙️ Type-2</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* DCX/Standalone Select */}
+          <Select value={dcxFilter} onValueChange={(value: 'all' | 'dcx-enabled' | 'standalone') => setDcxFilter(value)}>
+            <SelectTrigger className="w-[130px]">
+              <SelectValue placeholder="Journey" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">🌍 All</SelectItem>
+              <SelectItem value="dcx-enabled">🔗 DCX-Enabled</SelectItem>
+              <SelectItem value="standalone">📋 Standalone</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Performance Select */}
+          <Select value={performanceFilter} onValueChange={(value: 'all' | 'high' | 'medium' | 'low') => setPerformanceFilter(value)}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Performance" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">📊 All</SelectItem>
+              <SelectItem value="high">🟢 High (85+)</SelectItem>
+              <SelectItem value="medium">🟡 Medium (70-84)</SelectItem>
+              <SelectItem value="low">🔴 Low (&lt;70)</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Clear Filters Button */}
+          {hasActiveFilters && (
+            <Button variant="outline" size="sm" onClick={clearAllFilters} className="text-xs">
+              Clear
+            </Button>
+          )}
+
+          {/* Quick Stats */}
+          <div className="flex items-center space-x-1 text-xs text-muted-foreground bg-accent/20 rounded px-2 py-1">
+            <span className="font-medium">{serviceData.length}</span>
+            <span>services</span>
+          </div>
+        </>
+      )
+      setSlicers(serviceSlicers)
     }
-  }, [selectedServiceData])
+    return () => setSlicers(null) // Clear slicers when component unmounts
+  }, [isLoading, serviceData, serviceTypeFilter, dcxFilter, performanceFilter, hasActiveFilters, setSlicers])
 
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Services</h1>
-          <p className="text-muted-foreground">Loading service data...</p>
-        </div>
-      </div>
-    )
+    return <SkeletonPage showKpis={true} showCharts={true} showTable={true} />
   }
 
-  const entityName = selectedEntity?.name || 'All Entities'
   const allServices = services.filter(s => 
     serviceTypeFilter === 'all' || s.type === serviceTypeFilter
   )
   const dcxServices = allServices.filter(s => s.dcxIds.length > 0)
   const type1Services = allServices.filter(s => s.type === 1)
   const type2Services = allServices.filter(s => s.type === 2)
-  
-  // Calculate performance distribution for all services
-  const allServiceData = services.map(service => {
-    const overallScore = calculateServiceOverallScore(service, serviceReviews, dcxReviews)
-    let performanceCategory: 'high' | 'medium' | 'low'
-    if (overallScore >= 85) performanceCategory = 'high'
-    else if (overallScore >= 70) performanceCategory = 'medium'
-    else performanceCategory = 'low'
-    return { ...service, overallScore, performanceCategory }
-  })
-  
-  const performanceDistribution = {
-    high: allServiceData.filter(s => s.performanceCategory === 'high').length,
-    medium: allServiceData.filter(s => s.performanceCategory === 'medium').length,
-    low: allServiceData.filter(s => s.performanceCategory === 'low').length
-  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Service Analytics</h1>
-        <p className="text-muted-foreground">
-          Comprehensive service performance analysis for {entityName} - Deep insights into every service offering.
-        </p>
-      </div>
-
-      {/* Service Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-wrap gap-2 mb-4">
-            <div className="flex gap-2">
-              <Button 
-                variant={serviceTypeFilter === 'all' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setServiceTypeFilter('all')}
-              >
-                All Services ({allServices.length})
-              </Button>
-              <Button 
-                variant={serviceTypeFilter === 1 ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setServiceTypeFilter(1)}
-              >
-                🔄 Type-1 ({type1Services.length})
-              </Button>
-              <Button 
-                variant={serviceTypeFilter === 2 ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setServiceTypeFilter(2)}
-              >
-                ⚙️ Type-2 ({type2Services.length})
-              </Button>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button 
-              variant={dcxFilter === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setDcxFilter('all')}
-            >
-              All Types
-            </Button>
-            <Button 
-              variant={dcxFilter === 'dcx-enabled' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setDcxFilter('dcx-enabled')}
-            >
-              🔗 DCX-Enabled ({dcxServices.length})
-            </Button>
-            <Button 
-              variant={dcxFilter === 'standalone' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setDcxFilter('standalone')}
-            >
-              📱 Standalone
-            </Button>
-          </div>
-          <div className="flex flex-wrap gap-2 pt-2">
-            <Button 
-              variant={performanceFilter === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setPerformanceFilter('all')}
-            >
-              All Performance
-            </Button>
-            <Button 
-              variant={performanceFilter === 'high' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setPerformanceFilter('high')}
-            >
-              🟢 High (85+) ({performanceDistribution.high})
-            </Button>
-            <Button 
-              variant={performanceFilter === 'medium' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setPerformanceFilter('medium')}
-            >
-              🟡 Medium (70-84) ({performanceDistribution.medium})
-            </Button>
-            <Button 
-              variant={performanceFilter === 'low' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setPerformanceFilter('low')}
-            >
-              🔴 Low (&lt;70) ({performanceDistribution.low})
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* KPI Overview */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
@@ -569,67 +490,6 @@ export function Services() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Main Analytics Section */}
-      <div className="grid gap-6 md:grid-cols-3">
-        {/* Service Performance Overview */}
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Service Performance & Volume Analysis</CardTitle>
-            <CardDescription>
-              Top 10 services by performance - DCX services highlighted in purple
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[350px]">
-              <ReactECharts option={topPerformersChart} style={{ height: '100%', width: '100%' }} />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Service Type Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Service Portfolio Mix</CardTitle>
-            <CardDescription>Distribution by service complexity</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[350px]">
-              <ReactECharts option={serviceTypeChart} style={{ height: '100%', width: '100%' }} />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Performance vs Volume Correlation */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Performance vs Volume Correlation</CardTitle>
-          <CardDescription>
-            Service performance vs review volume - Bubble size indicates traffic, colors show service types
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[350px]">
-            <ReactECharts option={performanceVolumeChart} style={{ height: '100%', width: '100%' }} />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Channel Usage Analysis */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Channel Usage Distribution</CardTitle>
-          <CardDescription>
-            Review volume across different service delivery channels
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[300px]">
-            <ReactECharts option={channelDistributionChart} style={{ height: '100%', width: '100%' }} />
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Service Portfolio & Details */}
       <div className="grid gap-6 md:grid-cols-2">
@@ -698,6 +558,38 @@ export function Services() {
                 </Button>
               </div>
 
+              {/* Filter Chips */}
+              <div className="flex flex-wrap gap-2">
+                <Button 
+                  variant={serviceTypeFilter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setServiceTypeFilter('all')}
+                >
+                  All Services ({allServices.length})
+                </Button>
+                <Button 
+                  variant={serviceTypeFilter === 1 ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setServiceTypeFilter(1)}
+                >
+                  🔄 Type-1 ({type1Services.length})
+                </Button>
+                <Button 
+                  variant={serviceTypeFilter === 2 ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setServiceTypeFilter(2)}
+                >
+                  ⚙️ Type-2 ({type2Services.length})
+                </Button>
+                <Button 
+                  variant={dcxFilter === 'dcx-enabled' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setDcxFilter('dcx-enabled')}
+                >
+                  🔗 DCX-Enabled ({dcxServices.length})
+                </Button>
+              </div>
+
               {/* Grouping Options */}
               <div className="flex flex-wrap gap-2">
                 <Button 
@@ -742,78 +634,56 @@ export function Services() {
               {Object.entries(groupedServices).map(([groupName, services]) => (
                 <div key={groupName}>
                   {groupBy !== 'none' && (
-                    <div className="sticky top-0 bg-background/90 backdrop-blur-sm border-b pb-2 mb-3">
-                      <h4 className="font-semibold text-sm text-muted-foreground">
-                        {groupName} ({services.length})
-                      </h4>
-                    </div>
+                    <h4 className="font-medium text-sm text-muted-foreground mb-2 sticky top-0 bg-background z-10">
+                      {groupName} ({services.length})
+                    </h4>
                   )}
                   <div className="space-y-2">
-                    {services.map((service) => (
+                    {services.map((service: any) => (
                       <div 
                         key={service.id} 
-                        className={`p-3 border rounded-lg cursor-pointer transition-all hover:shadow-md hover:bg-accent/30 ${
-                          selectedServiceId === service.id ? 'bg-accent border-primary shadow-sm' : ''
+                        className={`p-3 border rounded-lg cursor-pointer transition-colors hover:bg-accent/50 ${
+                          selectedServiceId === service.id ? 'bg-accent border-primary' : ''
                         }`}
                         onClick={() => setSelectedServiceId(service.id)}
                       >
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <div className={`w-2 h-2 rounded-full ${
-                                service.overallScore >= 85 ? 'bg-green-500' : 
-                                service.overallScore >= 70 ? 'bg-yellow-500' : 'bg-red-500'
-                              }`}></div>
+                            <div className="flex items-center gap-2">
                               <p className="font-medium text-sm">{service.name}</p>
                               <Badge variant="outline" className="text-xs">
-                                {service.type === 1 ? '🔄' : '⚙️'} Type-{service.type}
+                                {service.type === 1 ? '🔄 Type-1' : '⚙️ Type-2'}
                               </Badge>
                               {service.isDcxEnabled && (
-                                <Badge variant="secondary" className="text-xs">
-                                  🔗 DCX
-                                </Badge>
+                                <Badge variant="secondary" className="text-xs">🔗 DCX</Badge>
                               )}
-                              {service.performanceCategory === 'high' && (
-                                <Badge variant="default" className="text-xs bg-green-100 text-green-700">
-                                  ⭐ Top Performer
-                                </Badge>
+                              {service.performanceCategory === 'low' && (
+                                <Badge variant="destructive" className="text-xs">⚠️ Needs Attention</Badge>
                               )}
                             </div>
-                            <p className="text-xs text-muted-foreground mb-2">
-                              🏢 {service.owner} • 📊 {service.reviewCount} reviews • 🌐 {service.channelCount} channels
-                            </p>
-                            <div className="flex flex-wrap gap-1">
-                              {service.channelBreakdown.app > 0 && (
-                                <Badge variant="outline" className="text-xs">📱 {service.channelBreakdown.app}</Badge>
-                              )}
-                              {service.channelBreakdown.web > 0 && (
-                                <Badge variant="outline" className="text-xs">🌐 {service.channelBreakdown.web}</Badge>
-                              )}
-                              {service.channelBreakdown.shared > 0 && (
-                                <Badge variant="outline" className="text-xs">🔗 {service.channelBreakdown.shared}</Badge>
-                              )}
-                              {service.channelBreakdown.service_center > 0 && (
-                                <Badge variant="outline" className="text-xs">🏢 {service.channelBreakdown.service_center}</Badge>
+                            <p className="text-xs text-muted-foreground mb-1">{service.owner}</p>
+                            <div className="flex gap-1 text-xs text-muted-foreground">
+                              <span>{service.reviewCount} reviews</span>
+                              <span>•</span>
+                              <span>{service.availableChannels.length} channels</span>
+                              {service.isDcxEnabled && (
+                                <>
+                                  <span>•</span>
+                                  <span>DCX journey</span>
+                                </>
                               )}
                             </div>
                           </div>
-                          <div className="text-right ml-4">
-                            <div className={`font-bold text-lg ${
+                          <div className="text-right">
+                            <p className={`font-bold text-sm ${
                               service.overallScore >= 85 ? 'text-green-600' : 
                               service.overallScore >= 70 ? 'text-yellow-600' : 'text-red-600'
                             }`}>
                               {service.overallScore}
-                            </div>
-                            {service.isDcxEnabled && service.dcxInfluence !== 0 && (
-                              <div className={`text-xs ${
-                                service.dcxInfluence > 0 ? 'text-green-600' : 'text-red-600'
-                              }`}>
-                                DCX: {service.dcxInfluence > 0 ? '+' : ''}{service.dcxInfluence.toFixed(1)}
-                              </div>
-                            )}
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {service.performanceCategory} perf.
-                            </div>
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Standalone: {service.standaloneScore}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -828,16 +698,16 @@ export function Services() {
                   <div className="text-4xl mb-2">🔍</div>
                   <p className="text-lg font-medium">No services found</p>
                   <p className="text-sm">
-                    {searchQuery ? `No services match "${searchQuery}"` : 'Try adjusting your filters'}
+                    {hasActiveFilters ? 'Try adjusting your filters above' : 'No services available'}
                   </p>
-                  {searchQuery && (
+                  {hasActiveFilters && (
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      onClick={() => setSearchQuery('')}
+                      onClick={clearAllFilters}
                       className="mt-3"
                     >
-                      Clear Search
+                      Clear All Filters
                     </Button>
                   )}
                 </div>
@@ -846,14 +716,14 @@ export function Services() {
           </CardContent>
         </Card>
 
-        {/* Service Details */}
+        {/* Service Deep Dive */}
         <Card>
           <CardHeader>
             <CardTitle>
-              {selectedServiceData ? '🎯 Service Insights' : '📊 Service Details'}
+              {selectedServiceData ? '🔍 Service Deep Dive' : '📊 Service Analysis'}
             </CardTitle>
             <CardDescription>
-              {selectedServiceData ? selectedServiceData.name : 'Select a service to view detailed insights'}
+              {selectedServiceData ? selectedServiceData.name : 'Select a service to view comprehensive analysis and breakdown'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -870,79 +740,113 @@ export function Services() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium">Review Volume</p>
+                    <p className="text-sm font-medium">Standalone Score</p>
+                    <p className="text-2xl font-bold">{selectedServiceData.standaloneScore}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Total Reviews</p>
                     <p className="text-2xl font-bold">{selectedServiceData.reviewCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Channels</p>
+                    <p className="text-2xl font-bold">{selectedServiceData.channelCount}</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium">Standalone Score</p>
-                    <p className="text-xl font-bold">{selectedServiceData.standaloneScore}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Available Channels</p>
-                    <p className="text-xl font-bold">{selectedServiceData.channelCount}</p>
+                <div className="p-3 bg-accent/20 rounded-lg">
+                  <p className="text-sm font-medium mb-1">Service Configuration</p>
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p>🏷️ Type: {selectedServiceData.type === 1 ? 'Type-1 (Simple)' : 'Type-2 (Process + Deliverable)'}</p>
+                    <p>🏢 Owner: {selectedServiceData.owner}</p>
+                    <p>📊 Performance Category: {selectedServiceData.performanceCategory}</p>
+                    {selectedServiceData.isDcxEnabled && (
+                      <p className="text-purple-600">🔗 Connected to DCX journey</p>
+                    )}
                   </div>
                 </div>
                 
-                <div className="p-3 bg-accent/20 rounded-lg">
-                  <p className="text-sm font-medium mb-1">Service Configuration</p>
-                  <p className="text-xs text-muted-foreground">
-                    {selectedServiceData.type === 1 ? '🔄 TYPE-1 (Simple Service)' : '⚙️ TYPE-2 (Complex Service)'}
-                    {selectedServiceData.type === 2 && ' - 80% Process + 20% Deliverable weighting'}
-                  </p>
-                  {selectedServiceData.isDcxEnabled && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      🔗 DCX-Enabled - 70% Standalone + 30% Journey blend
-                      {selectedServiceData.dcxInfluence !== 0 && (
-                        <span className={selectedServiceData.dcxInfluence > 0 ? 'text-green-600' : 'text-red-600'}>
-                          {' '}(Impact: {selectedServiceData.dcxInfluence > 0 ? '+' : ''}{selectedServiceData.dcxInfluence.toFixed(1)})
-                        </span>
-                      )}
-                    </p>
-                  )}
-                </div>
-
-                {selectedServiceData.availableChannels.length > 0 && (
+                {selectedServiceData.type === 2 && (
                   <div>
-                    <p className="text-sm font-medium mb-2">📊 Channel Usage Breakdown</p>
-                    <div className="h-[200px]">
-                      <ReactECharts option={serviceChannelsChart} style={{ height: '100%', width: '100%' }} />
+                    <p className="text-sm font-medium mb-2">⚙️ Type-2 Service Breakdown</p>
+                    <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                      <p>Type-2 Service Breakdown Chart</p>
                     </div>
                   </div>
                 )}
-
-                <div>
-                  <p className="text-sm font-medium mb-2">📋 Available Channels</p>
-                  <div className="grid gap-2">
-                    {selectedServiceData.availableChannels.map((channel, index) => (
-                      <div key={index} className="flex items-center gap-2 p-2 bg-accent/10 rounded">
-                        <span className="text-sm">
-                          {channel?.type === 'app' ? '📱' : 
-                           channel?.type === 'web' ? '🌐' : 
-                           channel?.type === 'service_center' ? '🏢' : '🔗'}
-                        </span>
-                        <span className="text-sm font-medium">{channel?.name}</span>
-                        <Badge variant="outline" className="text-xs ml-auto">
-                          {channel?.type?.replace('_', ' ')}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
               </div>
             ) : (
               <div className="h-[400px] flex items-center justify-center text-muted-foreground">
                 <div className="text-center">
-                  <div className="text-4xl mb-2">🎯</div>
-                  <p>Select a service to view detailed performance analytics</p>
+                  <div className="text-4xl mb-2">📊</div>
+                  <p>Select a service to view detailed performance metrics and breakdown analysis</p>
                 </div>
               </div>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Main Analytics Section */}
+      <div className="grid gap-6 md:grid-cols-3">
+        {/* Service Performance Overview */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Service Performance & Volume Analysis</CardTitle>
+            <CardDescription>
+              Top 10 services by performance - DCX services highlighted in purple
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[350px]">
+              <ReactECharts option={topPerformersChart} style={{ height: '100%', width: '100%' }} />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Service Type Distribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Service Portfolio Mix</CardTitle>
+            <CardDescription>Distribution by service complexity</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[350px]">
+              <ReactECharts option={serviceTypeChart} style={{ height: '100%', width: '100%' }} />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Performance vs Volume Correlation */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Performance vs Volume Correlation</CardTitle>
+          <CardDescription>
+            Service performance vs review volume - Bubble size indicates traffic, colors show service types
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[350px]">
+            <ReactECharts option={performanceVolumeChart} style={{ height: '100%', width: '100%' }} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Channel Usage Analysis */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Channel Usage Distribution</CardTitle>
+          <CardDescription>
+            Review volume across different service delivery channels
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px]">
+            <ReactECharts option={channelDistributionChart} style={{ height: '100%', width: '100%' }} />
+          </div>
+        </CardContent>
+      </Card>
+
     </div>
   )
 }
