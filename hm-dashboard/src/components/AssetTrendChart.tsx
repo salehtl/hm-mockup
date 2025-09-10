@@ -1,12 +1,16 @@
 import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { TrendChart } from './TrendChart'
 import { useAssetTrendData } from '@/hooks/useAssetTrendData'
-import { BarChart3 } from 'lucide-react'
+import { BarChart3, Check, ChevronsUpDown } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export function AssetTrendChart() {
   const [selectedAssetId, setSelectedAssetId] = useState<string>('')
+  const [open, setOpen] = useState(false)
   const { trendData, availableAssets, isLoading } = useAssetTrendData(selectedAssetId || null)
 
   if (isLoading) {
@@ -46,26 +50,70 @@ export function AssetTrendChart() {
             </CardDescription>
           </div>
           <div className="w-80">
-            <Select value={selectedAssetId} onValueChange={setSelectedAssetId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select an asset" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableAssets.map(asset => (
-                  <SelectItem key={asset.id} value={asset.id}>
-                    <div className="flex items-center gap-2">
-                      <span>{asset.typeIcon}</span>
-                      <div className="flex flex-col text-left">
-                        <span className="font-medium">{asset.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {asset.typeLabel} • {asset.entityName}
-                        </span>
-                      </div>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={open}
+                  className="w-full justify-between"
+                >
+                  {selectedAssetId
+                    ? (() => {
+                        const asset = availableAssets.find((asset) => asset.id === selectedAssetId)
+                        return asset ? (
+                          <div className="flex items-center gap-2">
+                            <span>{asset.typeIcon}</span>
+                            <div className="flex flex-col text-left">
+                              <span className="font-medium">{asset.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {asset.typeLabel} • {asset.entityName}
+                              </span>
+                            </div>
+                          </div>
+                        ) : "Select asset..."
+                      })()
+                    : "Search and select asset..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-0">
+                <Command>
+                  <CommandInput placeholder="Search assets by name, type, or entity..." />
+                  <CommandList>
+                    <CommandEmpty>No assets found.</CommandEmpty>
+                    <CommandGroup>
+                      {availableAssets.map((asset) => (
+                        <CommandItem
+                          key={asset.id}
+                          value={`${asset.name} ${asset.typeLabel} ${asset.entityName}`.toLowerCase()}
+                          onSelect={() => {
+                            setSelectedAssetId(asset.id)
+                            setOpen(false)
+                          }}
+                        >
+                          <div className="flex items-center gap-2 w-full">
+                            <span>{asset.typeIcon}</span>
+                            <div className="flex flex-col text-left flex-1">
+                              <span className="font-medium">{asset.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {asset.typeLabel} • {asset.entityName}
+                              </span>
+                            </div>
+                            <Check
+                              className={cn(
+                                "ml-auto h-4 w-4",
+                                selectedAssetId === asset.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
       </CardHeader>
