@@ -335,8 +335,42 @@ export function Services() {
 
   const selectedServiceData = useMemo(() => {
     if (!selectedServiceId) return null
-    return serviceData.find(s => s.id === selectedServiceId)
-  }, [selectedServiceId, serviceData])
+    const service = serviceData.find(s => s.id === selectedServiceId)
+    
+    if (!service) return null
+    
+    // Add phase data for Type-2 services
+    if (service.type === 2) {
+      const serviceReviewsForService = serviceReviews.filter(sr => sr.serviceId === selectedServiceId)
+      
+      const processReviews = serviceReviewsForService.filter(sr => sr.phase === 'process')
+      const deliverableReviews = serviceReviewsForService.filter(sr => sr.phase === 'deliverable')
+      
+      const processData = {
+        totalSubmissions: processReviews.reduce((sum, r) => sum + r.n, 0),
+        avgScore: processReviews.length > 0 
+          ? processReviews.reduce((sum, r) => sum + (r.score * r.n), 0) / processReviews.reduce((sum, r) => sum + r.n, 0)
+          : 0
+      }
+      
+      const deliverableData = {
+        totalSubmissions: deliverableReviews.reduce((sum, r) => sum + r.n, 0),
+        avgScore: deliverableReviews.length > 0 
+          ? deliverableReviews.reduce((sum, r) => sum + (r.score * r.n), 0) / deliverableReviews.reduce((sum, r) => sum + r.n, 0)
+          : 0
+      }
+      
+      return {
+        ...service,
+        phaseData: {
+          process: processData,
+          deliverable: deliverableData
+        }
+      }
+    }
+    
+    return service
+  }, [selectedServiceId, serviceData, serviceReviews])
 
   // Group services for better organization
   const groupedServices = useMemo(() => {
@@ -768,8 +802,138 @@ export function Services() {
                 {selectedServiceData.type === 2 && (
                   <div>
                     <p className="text-sm font-medium mb-2">⚙️ Type-2 Service Breakdown</p>
-                    <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-                      <p>Type-2 Service Breakdown Chart</p>
+                    <div className="h-[300px]">
+                      <ReactECharts 
+                        option={{
+                          tooltip: {
+                            trigger: 'axis',
+                            axisPointer: { type: 'shadow' },
+                            formatter: function(params: any) {
+                              const processData = params.find((p: any) => p.seriesName === 'Process Phase')
+                              const deliverableData = params.find((p: any) => p.seriesName === 'Deliverable Phase')
+                              const scoreData = params.find((p: any) => p.seriesName === 'Phase Score')
+                              
+                              let html = '<div><strong>Type-2 Service Analysis</strong></div>'
+                              if (processData) {
+                                html += `<div>Process Submissions: ${processData.value}</div>`
+                              }
+                              if (deliverableData) {
+                                html += `<div>Deliverable Submissions: ${deliverableData.value}</div>`
+                              }
+                              if (processData && deliverableData) {
+                                const dropoffNum = ((processData.value - deliverableData.value) / processData.value * 100)
+                                const dropoff = dropoffNum.toFixed(1)
+                                html += `<div style="color: ${dropoffNum > 0 ? '#f87171' : '#34d399'}">Dropoff: ${dropoff}%</div>`
+                              }
+                              if (scoreData) {
+                                html += `<div>Average Score: ${scoreData.value}</div>`
+                              }
+                              return html
+                            }
+                          },
+                          legend: {
+                            data: ['Process Phase', 'Deliverable Phase', 'Phase Score'],
+                            top: 10
+                          },
+                          xAxis: {
+                            type: 'category',
+                            data: ['Volume Analysis', 'Performance Analysis'],
+                            axisLabel: { fontSize: 11 }
+                          },
+                          yAxis: [
+                            {
+                              type: 'value',
+                              name: 'Submissions',
+                              position: 'left',
+                              min: 0
+                            },
+                            {
+                              type: 'value', 
+                              name: 'Score',
+                              position: 'right',
+                              min: 60,
+                              max: 100
+                            }
+                          ],
+                          series: (() => {
+                            if (!selectedServiceData) return []
+                            
+                            const processReviews = (selectedServiceData as any).phaseData?.process || { totalSubmissions: 0, avgScore: 0 }
+                            const deliverableReviews = (selectedServiceData as any).phaseData?.deliverable || { totalSubmissions: 0, avgScore: 0 }
+                            
+                            return [
+                              {
+                                name: 'Process Phase',
+                                type: 'bar',
+                                data: [processReviews.totalSubmissions, 0],
+                                itemStyle: { color: '#60a5fa' },
+                                yAxisIndex: 0
+                              },
+                              {
+                                name: 'Deliverable Phase', 
+                                type: 'bar',
+                                data: [deliverableReviews.totalSubmissions, 0],
+                                itemStyle: { color: '#34d399' },
+                                yAxisIndex: 0
+                              },
+                              {
+                                name: 'Phase Score',
+                                type: 'line',
+                                data: [0, (processReviews.avgScore + deliverableReviews.avgScore) / 2],
+                                itemStyle: { color: '#f59e0b' },
+                                lineStyle: { width: 3 },
+                                yAxisIndex: 1,
+                                symbol: 'circle',
+                                symbolSize: 8
+                              }
+                            ]
+                          })()
+                        }}
+                        style={{ height: '100%', width: '100%' }}
+                      />
+                    </div>
+                    
+                    {/* Phase Analysis Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+                      <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border">
+                        <div className="text-sm font-medium text-blue-700 dark:text-blue-300">Process Phase</div>
+                        <div className="text-lg font-bold text-blue-900 dark:text-blue-100">
+                          {(selectedServiceData as any).phaseData?.process?.totalSubmissions || 0}
+                        </div>
+                        <div className="text-xs text-blue-600 dark:text-blue-400">
+                          Score: {(selectedServiceData as any).phaseData?.process?.avgScore?.toFixed(1) || 0}
+                        </div>
+                      </div>
+                      
+                      <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border">
+                        <div className="text-sm font-medium text-green-700 dark:text-green-300">Deliverable Phase</div>
+                        <div className="text-lg font-bold text-green-900 dark:text-green-100">
+                          {(selectedServiceData as any).phaseData?.deliverable?.totalSubmissions || 0}
+                        </div>
+                        <div className="text-xs text-green-600 dark:text-green-400">
+                          Score: {(selectedServiceData as any).phaseData?.deliverable?.avgScore?.toFixed(1) || 0}
+                        </div>
+                      </div>
+                      
+                      <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border">
+                        <div className="text-sm font-medium text-red-700 dark:text-red-300">Completion Dropoff</div>
+                        <div className="text-lg font-bold text-red-900 dark:text-red-100">
+                          {(() => {
+                            const process = (selectedServiceData as any).phaseData?.process?.totalSubmissions || 0
+                            const deliverable = (selectedServiceData as any).phaseData?.deliverable?.totalSubmissions || 0
+                            if (process === 0) return '0%'
+                            const dropoff = ((process - deliverable) / process * 100)
+                            return `${dropoff.toFixed(1)}%`
+                          })()}
+                        </div>
+                        <div className="text-xs text-red-600 dark:text-red-400">
+                          {(() => {
+                            const process = (selectedServiceData as any).phaseData?.process?.totalSubmissions || 0
+                            const deliverable = (selectedServiceData as any).phaseData?.deliverable?.totalSubmissions || 0
+                            return `${deliverable}/${process} completed`
+                          })()}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
