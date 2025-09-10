@@ -14,6 +14,7 @@ import { useMemo, useState } from 'react'
 import ReactECharts from 'echarts-for-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { SkeletonPage } from '@/components/SkeletonLoader'
 
 export function Overview() {
   const { selectedEntity } = useEntity()
@@ -314,40 +315,13 @@ export function Overview() {
   }, [trendData, isTrendLoading, selectedMetric])
 
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Executive Overview</h1>
-          <p className="text-muted-foreground">Loading comprehensive analytics...</p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-4">
-          {[1, 2, 3, 4].map(i => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="h-4 bg-gray-200 rounded w-20"></div>
-                <div className="h-6 w-6 bg-gray-200 rounded"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 bg-gray-200 rounded w-16 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-24"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    )
+    return <SkeletonPage showKpis={true} showCharts={true} showList={true} />
   }
 
   const entityName = selectedEntity?.name || 'All Entities'
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Executive Overview</h1>
-        <p className="text-muted-foreground">
-          Comprehensive performance dashboard for {entityName} - Real-time insights and strategic KPIs.
-        </p>
-      </div>
 
       {/* Alerts Section */}
       {calculations.alerts.length > 0 && (

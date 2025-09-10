@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
-import { BarChart3, Settings, Home, GitBranch, MessageSquare } from 'lucide-react'
+import { BarChart3, Settings, Home, GitBranch, MessageSquare, X } from 'lucide-react'
+import { Button } from './ui/button'
 import { cn } from '@/lib/utils'
 
 const navigation = [
@@ -30,15 +31,30 @@ const navigation = [
   },
 ]
 
-export function Sidebar() {
+interface SidebarProps {
+  onClose?: () => void
+}
+
+export function Sidebar({ onClose }: SidebarProps) {
   return (
     <div className="flex h-full w-64 flex-col bg-card border-r">
       {/* Logo/Header */}
-      <div className="flex h-16 items-center border-b px-6">
+      <div className="flex h-16 items-center justify-between border-b px-6">
         <div className="flex items-center gap-2">
           <BarChart3 className="h-6 w-6 text-primary" />
           <span className="text-lg font-semibold">HM Dashboard</span>
         </div>
+        {onClose && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="lg:hidden"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close sidebar</span>
+          </Button>
+        )}
       </div>
 
       {/* Navigation */}

@@ -8,6 +8,7 @@ import ReactECharts from 'echarts-for-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { apiEndpoints } from '@/lib/api'
+import { SkeletonPage } from '@/components/SkeletonLoader'
 
 interface DCXJourney {
   id: string
@@ -431,28 +432,14 @@ export function DCX() {
   }, [selectedDcxId, dcxData])
 
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">DCX Journey Intelligence</h1>
-          <p className="text-muted-foreground">Loading comprehensive journey analytics...</p>
-        </div>
-      </div>
-    )
+    return <SkeletonPage showKpis={true} showCharts={true} showList={true} />
   }
 
   if (!dcxData) return null
 
-  const entityName = selectedEntity?.name || 'All Entities'
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">DCX Journey Intelligence</h1>
-        <p className="text-muted-foreground">
-          Advanced Digital Customer Experience analytics for {entityName} - Journey optimization and performance insights.
-        </p>
-      </div>
 
       {/* Journey Filters */}
       <Card>
