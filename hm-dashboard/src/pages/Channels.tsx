@@ -17,7 +17,7 @@ export function Channels() {
   const { channels, channelRatings, booths, services, serviceChannels, serviceReviews, isLoading } = useApiData()
   const { setSlicers } = usePageSlicers()
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null)
-  const [channelTypeFilter, setChannelTypeFilter] = useState<'all' | 'app' | 'web' | 'service_center'>('all')
+  const [channelTypeFilter, setChannelTypeFilter] = useState<'all' | 'app' | 'web' | 'service_center' | 'shared'>('all')
   const [showServicesForChannel] = useState<string | null>(null)
   const [performanceFilter, setPerformanceFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all')
   const [searchQuery, setSearchQuery] = useState('')
@@ -96,7 +96,10 @@ export function Channels() {
 
     // Filter channels by type, performance, and search
     const filteredChannels = channelsWithScores.filter(channel => {
-      if (channelTypeFilter !== 'all' && channel.type !== channelTypeFilter) return false
+      if (channelTypeFilter !== 'all') {
+        const filterType = channelTypeFilter === 'shared' ? 'shared_platform' : channelTypeFilter
+        if (channel.type !== filterType) return false
+      }
       // Only apply performance filter to rated channels
       if (performanceFilter !== 'all') {
         if (channel.performanceCategory === 'unrated') return false
@@ -135,7 +138,8 @@ export function Channels() {
       filteredChannels,
       appChannels: channelsWithScores.filter(c => c.type === 'app'),
       webChannels: channelsWithScores.filter(c => c.type === 'web'),
-      serviceCenters: channelsWithScores.filter(c => c.type === 'service_center')
+      serviceCenters: channelsWithScores.filter(c => c.type === 'service_center'),
+      sharedChannels: channelsWithScores.filter(c => c.type === 'shared_platform')
     }
   }, [channels, channelRatings, booths, isLoading, channelTypeFilter, performanceFilter, searchQuery, sortBy])
 
@@ -368,6 +372,7 @@ export function Channels() {
       return channelData.filteredChannels.reduce((groups, channel) => {
         const key = channel.type === 'app' ? '📱 Mobile Apps' :
                    channel.type === 'web' ? '🌐 Web Portals' :
+                   channel.type === 'shared_platform' ? '🔗 Shared Platforms' :
                    '🏢 Service Centers'
         if (!groups[key]) groups[key] = []
         groups[key].push(channel)
@@ -434,7 +439,7 @@ export function Channels() {
       const channelSlicers = (
         <>
           {/* Channel Type Select */}
-          <Select value={channelTypeFilter} onValueChange={(value: 'all' | 'app' | 'web' | 'service_center') => setChannelTypeFilter(value)}>
+          <Select value={channelTypeFilter} onValueChange={(value: 'all' | 'app' | 'web' | 'service_center' | 'shared') => setChannelTypeFilter(value)}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Channel type" />
             </SelectTrigger>
@@ -443,6 +448,7 @@ export function Channels() {
               <SelectItem value="app">📱 Mobile Apps</SelectItem>
               <SelectItem value="web">🌐 Web Portals</SelectItem>
               <SelectItem value="service_center">🏢 Service Centers</SelectItem>
+              <SelectItem value="shared">🔗 Shared Platforms</SelectItem>
             </SelectContent>
           </Select>
 
@@ -497,7 +503,10 @@ export function Channels() {
           <CardContent>
             <div className="text-2xl font-bold">{channelData.filteredChannels.length}</div>
             <p className="text-xs text-muted-foreground">
-              {channelTypeFilter !== 'all' ? `${channelTypeFilter} channels` : 'total channels'}
+              {channelTypeFilter !== 'all' ? 
+                (channelTypeFilter === 'shared' ? 'shared channels' : `${channelTypeFilter} channels`) : 
+                'total channels'
+              }
             </p>
           </CardContent>
         </Card>
@@ -579,7 +588,7 @@ export function Channels() {
                 </div>
 
                 {/* Channel Type Select */}
-                <Select value={channelTypeFilter} onValueChange={(value: 'all' | 'app' | 'web' | 'service_center') => setChannelTypeFilter(value)}>
+                <Select value={channelTypeFilter} onValueChange={(value: 'all' | 'app' | 'web' | 'service_center' | 'shared') => setChannelTypeFilter(value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Channel Type" />
                   </SelectTrigger>
@@ -588,6 +597,7 @@ export function Channels() {
                     <SelectItem value="app">📱 Apps ({channelData?.appChannels.length || 0})</SelectItem>
                     <SelectItem value="web">🌐 Web ({channelData?.webChannels.length || 0})</SelectItem>
                     <SelectItem value="service_center">🏢 Centers ({channelData?.serviceCenters.length || 0})</SelectItem>
+                    <SelectItem value="shared">🔗 Shared ({channelData?.sharedChannels.length || 0})</SelectItem>
                   </SelectContent>
                 </Select>
 
